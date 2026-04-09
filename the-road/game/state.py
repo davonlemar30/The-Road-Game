@@ -21,7 +21,9 @@ class GameState:
             "permission_granted": False, # Scene 1 — gates house exit
             "in_town": False,            # True after player leaves GP's House
             "dome_entered": False,       # Scene 2 — first arrival at Keeper's Dome
+            "codex_given": False,        # Scene 2 — Bob gives GP Nate's parcel
             "codex_delivered": False,    # Scene 3 — Nate's Codex handed off
+            "mom_blessing_available": False,  # Scene 4 gate — Bob sends GP home first
             "told_mom_plans": False,     # Scene 4 — Bob sends GP home; Mom gives blessing
             "has_old_phone": False,      # Scene 4 — phone received during Mom's blessing
             "phone_unlocked": False,     # Scene 4+ — phone powered on by player

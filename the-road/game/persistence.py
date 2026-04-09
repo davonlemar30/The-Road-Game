@@ -20,6 +20,7 @@ def save_game(state: GameState) -> str:
         "current_objective": state.current_objective,
         "inventory": state.inventory,
         "questions_asked": state.questions_asked,
+        "discovered_locations": state.discovered_locations,
         "flags": state.flags,
     }
     with open(SAVE_FILE, "w") as f:
@@ -42,6 +43,7 @@ def load_game() -> tuple[bool, Union[GameState, str]]:
         state.current_objective = data.get("current_objective", "")
         state.inventory = data.get("inventory", [])
         state.questions_asked = data.get("questions_asked", [])
+        state.discovered_locations = data.get("discovered_locations", [])
         # Merge saved flags into defaults so new flags don't break old saves
         saved_flags = data.get("flags", {})
         state.flags.update(saved_flags)

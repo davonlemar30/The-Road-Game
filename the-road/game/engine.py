@@ -122,12 +122,12 @@ class GameEngine:
             if (
                 self.state.current_location == "living_room"
                 and self.state.flags["met_mother"]
-                and not self.state.flags["told_mom_plans"]
+                and not self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is in her chair. She's aware of you."
             elif (
                 self.state.current_location == "living_room"
-                and self.state.flags["told_mom_plans"]
+                and self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is still in her chair. She gives you a look that says: go."
             print(desc)
@@ -145,7 +145,7 @@ class GameEngine:
             return
 
         if self.state.current_location == "front_door" and direction == "out":
-            if not self.state.flags["told_mom_plans"]:
+            if not self.state.flags["mom_talked"]:
                 print(
                     "Something holds you at the threshold. "
                     "You haven't talked to your mom yet — not really."
@@ -211,16 +211,45 @@ class GameEngine:
                 self.state.flags["dome_entered"] = True
                 self._scene2_hook()
                 return
-            # Already triggered — player is just knocking / entering again
+
+            # Scene 2 setup: Bob gives Nate's Codex after the intro event
+            if not self.state.flags["codex_given"]:
+                self.state.flags["codex_given"] = True
+                if "Nate's Codex Parcel" not in self.state.inventory:
+                    self.state.inventory.append("Nate's Codex Parcel")
+                print("\nThe door opens the rest of the way and Bob waves you in.")
+                print("Audri is already by the equipment table, speaking quietly with him.")
+                print("She glances at you once — measuring, unreadable — then returns to the route map.")
+                print()
+                print('Bob rubs his forehead. "Good timing. I need a favor."')
+                print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
+                print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+                print(self.objectives.set_objective(self.state, "deliver_codex"))
+                print("\n(Type 'go mystic trail' to look for Nate.)")
+                return
+
+            # Post-delivery: Bob sends GP home for Scene 4 conversation
+            if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
+                self.state.flags["mom_blessing_available"] = True
+                print("\nBob checks your face before he checks your hands.")
+                print('"Good. You found Nate." He nods toward the town. "Now go talk to your mom."')
+                print('"No half-steps. Come back after that conversation and we\'ll continue."')
+                print(self.objectives.set_objective(self.state, "mom_blessing"))
+                return
+
+            # Scene 4+ follow-up
             print("\nThe door is open. You step inside.")
             print("─" * 40)
             print("Professor Bob is at his workbench, back to you.")
-            print("An Astari — small, watchful — sits on a perch near the window.")
-            print("Bob doesn't look up immediately.")
-            print('  "Pick the one that picks you. That\'s always been my advice."')
-            print('  "The other one already knows you\'re here."')
+            if self.state.flags["told_mom_plans"]:
+                print("An Astari — small, watchful — sits on a perch near the window.")
+                print("Bob doesn't look up immediately.")
+                print('  "Pick the one that picks you. That\'s always been my advice."')
+                print('  "The other one already knows you\'re here."')
+                print("(Starter selection is still in progress.)")
+            else:
+                print('Bob says, "When you\'ve had that talk at home, come back."')
             print("─" * 40)
-            print("(Scene 2 — Starter Selection — coming soon.)")
             return
 
         # Generic response for other locations
@@ -408,7 +437,7 @@ class GameEngine:
 
         elif location_id == "front_door" and self.state.flags["told_mom_plans"]:
             print("The door is unlocked. Type 'go out' when you're ready.")
-        elif location_id == "front_door" and not self.state.flags["told_mom_plans"]:
+        elif location_id == "front_door" and not self.state.flags["mom_talked"]:
             print("You stand at the door. Something tells you to talk to your mom first.")
 
     def _on_town_node_entered(self, node_id: str) -> None:
@@ -419,6 +448,20 @@ class GameEngine:
         if node_id == "keepers_dome" and not self.state.flags["dome_entered"]:
             self.state.flags["dome_entered"] = True
             self._scene2_hook()
+            return
+
+        if (
+            node_id == "mystic_trail"
+            and self.state.flags["codex_given"]
+            and not self.state.flags["codex_delivered"]
+        ):
+            self.state.flags["codex_delivered"] = True
+            if "Nate's Codex Parcel" in self.state.inventory:
+                self.state.inventory.remove("Nate's Codex Parcel")
+            print("\nNate is exactly where he always is — perched at the overlook.")
+            print('You hand over the parcel. He exhales. "So he finally sent it."')
+            print('He nods back toward town. "Go see Bob. It\'s overdue."')
+            print(self.objectives.set_objective(self.state, "return_to_dome"))
 
     # ── House → Town transition ───────────────────────────────────────────────
 
@@ -439,20 +482,19 @@ class GameEngine:
 
         if self.state.flags["has_old_phone"]:
             print("\n(The phone is off. Type 'use phone' to turn it on.)")
-        print(self.objectives.set_objective(self.state, "find_bob", added=True))
+        print(self.objectives.set_objective(self.state, "find_nate", added=True))
         print("\nType 'look' to take in Front Street.")
 
     # ── Scene 2 hook ─────────────────────────────────────────────────────────
 
     def _scene2_hook(self) -> None:
-        """Placeholder event when player first arrives at The Keeper's Dome."""
+        """Scene 2 intro event when player first arrives at The Keeper's Dome."""
         print("\n" + "─" * 40)
         print("The Dome is low and round, set back from everything else.")
-        print("The door is barely open. From inside, something moves.")
-        print("Not threatening. Aware.")
+        print("The door is barely open. Voices carry from inside — Bob's, and someone unfamiliar.")
         print()
-        print("A voice from inside — unhurried.")
-        print('  "I was wondering when you\'d show up."')
+        print("You catch a glimpse of Audri by the equipment table before she disappears deeper in.")
+        print('Bob calls out, "Come in. I\'ve got something for Nate."')
         print("─" * 40)
-        print(self.objectives.set_objective(self.state, "enter_dome", added=True))
+        print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
         print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")
