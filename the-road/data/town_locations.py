@@ -154,12 +154,12 @@ TOWN_NODES: dict[str, dict] = {
     },
 
     # ── THE KEEPER'S DOME ─────────────────────────────────────────────────────
-    # Bob's lab. Scene 2 entry point.
+    # The Keeper's Dome. Scene 2 entry point.
     "keepers_dome": {
         "name": "The Keeper's Dome",
         "aliases": {
-            "keepers dome", "keeper's dome", "the dome", "dome", "bob", "bob's lab",
-            "keeper", "lab", "bob lab",
+            "keepers dome", "keeper's dome", "the dome", "dome", "bob",
+            "keeper",
         },
         "description": (
             "Low, round, and set back from the path where foot traffic naturally thins. "

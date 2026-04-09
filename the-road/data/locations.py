@@ -57,7 +57,7 @@ LOCATIONS = {
                 "  > Astari aren't just for travel. Read three separate accounts now.\n"
                 "  > Something about the bond changes the way you think — not the thoughts,\n"
                 "  > but the *speed*. Like having backup processing.\n"
-                "  > Bob's lab is the closest place. He's been asking about me apparently.\n"
+                "  > The Keeper's Dome is the closest place. He's been asking about me apparently.\n"
                 "  > Keep putting it off. Don't know why.\n\n"
                 "The doc is dated three weeks ago."
             ),
