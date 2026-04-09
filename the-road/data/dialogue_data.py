@@ -115,7 +115,7 @@ MOM_QA: dict[str, dict] = {
                 '"You\'ve waited longer than most."',
             ],
             "astari get": [
-                '"Professor Bob keeps a few at his lab."',
+                '"Professor Bob keeps a few at the Keeper\'s Dome."',
                 '"Has for years. He\'s been asking when you were coming in to choose."',
                 '"He mentioned you specifically, more than once."',
                 'A small pause. "Maybe now\'s the time."',
@@ -174,14 +174,14 @@ MOM_QA: dict[str, dict] = {
     "bob": {
         "answer": [
             '"Professor Bob\'s been here longer than most people remember."',
-            '"Keeps that lab running almost by himself. Good man — disorganized, but good."',
+            '"Keeps the Dome running almost by himself. Good man — disorganized, but good."',
             '"He had a couple Astari in there he was holding for students who never showed up."',
             '"Then this morning he\'s knocking on my door before I\'ve even had my coffee."',
             '"Looking like he hadn\'t slept. Asking about Nate."',
         ],
-        "hint": "(dig deeper: bob lab  •  bob nate  •  bob astari)",
+        "hint": "(dig deeper: bob dome  •  bob nate  •  bob astari)",
         "followups": {
-            "bob lab": [
+            "bob dome": [
                 '"The Keeper\'s Dome, down near the edge of town."',
                 '"You\'ve walked past it a hundred times."',
                 '"Smells like old paper and something alive."',

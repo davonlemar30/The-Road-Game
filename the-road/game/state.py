@@ -17,12 +17,13 @@ class GameState:
     flags: dict[str, bool] = field(
         default_factory=lambda: {
             "met_mother": False,
-            "mom_talked": False,       # main Scene 1 monologue delivered
-            "told_mom_plans": False,   # player told mom they're going (triggers phone + permission)
-            "permission_granted": False,
-            "in_town": False,          # True after player leaves GP's House
-            "has_old_phone": False,    # True after Mom hands over phone during blessing
-            "phone_unlocked": False,   # True after player uses phone for first time
-            "dome_entered": False,     # True on first arrival at Keeper's Dome
+            "mom_talked": False,         # Scene 1 — Mom's monologue delivered
+            "permission_granted": False, # Scene 1 — gates house exit
+            "in_town": False,            # True after player leaves GP's House
+            "dome_entered": False,       # Scene 2 — first arrival at Keeper's Dome
+            "codex_delivered": False,    # Scene 3 — Nate's Codex handed off
+            "told_mom_plans": False,     # Scene 4 — Bob sends GP home; Mom gives blessing
+            "has_old_phone": False,      # Scene 4 — phone received during Mom's blessing
+            "phone_unlocked": False,     # Scene 4+ — phone powered on by player
         }
     )
