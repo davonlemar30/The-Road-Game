@@ -89,6 +89,7 @@ class GameEngine:
         handlers = {
             "look":      self._cmd_look,
             "go":        self._cmd_go,
+            "enter":     self._cmd_enter,
             "inspect":   self._cmd_inspect,
             "talk":      self._cmd_talk,
             "ask":       self._cmd_ask,
@@ -116,7 +117,20 @@ class GameEngine:
         if self.state.flags["in_town"]:
             print(self.town.describe(self.state.current_location))
         else:
-            print(self.world.describe_location(self.state.current_location))
+            desc = self.world.describe_location(self.state.current_location)
+            # If mom is present in the living room, mention her in the look description
+            if (
+                self.state.current_location == "living_room"
+                and self.state.flags["met_mother"]
+                and not self.state.flags["told_mom_plans"]
+            ):
+                desc += "\n\nYour mom is in her chair. She's aware of you."
+            elif (
+                self.state.current_location == "living_room"
+                and self.state.flags["told_mom_plans"]
+            ):
+                desc += "\n\nYour mom is still in her chair. She gives you a look that says: go."
+            print(desc)
 
     def _cmd_go(self, arg: str) -> None:
         if self.state.flags["in_town"]:
@@ -131,11 +145,12 @@ class GameEngine:
             return
 
         if self.state.current_location == "front_door" and direction == "out":
-            if not self.state.flags["permission_granted"]:
+            if not self.state.flags["told_mom_plans"]:
                 print(
                     "Something holds you at the threshold. "
-                    "You don't feel ready to go — not yet."
+                    "You haven't talked to your mom yet — not really."
                 )
+                print("(Talk to her. Tell her where you're going.)")
                 return
             self._transition_to_town()
             return
@@ -157,6 +172,11 @@ class GameEngine:
             print("Go where? Example: go square  /  go keeper's dome  /  go market")
             return
 
+        # "go inside" / "go in" → treat as enter command at current location
+        if target.lower() in {"inside", "in", "through", "through the door"}:
+            self._cmd_enter("")
+            return
+
         success, result = self.town.move_to(self.state.current_location, target)
         if not success:
             print(result)
@@ -176,6 +196,35 @@ class GameEngine:
             print(self.town.inspect(self.state.current_location, arg))
         else:
             print(self.world.inspect(self.state.current_location, arg))
+
+    def _cmd_enter(self, arg: str) -> None:
+        """Handle 'enter', 'open door', 'knock', 'go inside' in town."""
+        if not self.state.flags["in_town"]:
+            print("There's nothing to enter here.")
+            return
+
+        loc = self.state.current_location
+
+        if loc == "keepers_dome":
+            if not self.state.flags["dome_entered"]:
+                # Should have been triggered on arrival — fire it now if missed
+                self.state.flags["dome_entered"] = True
+                self._scene2_hook()
+                return
+            # Already triggered — player is just knocking / entering again
+            print("\nThe door is open. You step inside.")
+            print("─" * 40)
+            print("Professor Bob is at his workbench, back to you.")
+            print("An Astari — small, watchful — sits on a perch near the window.")
+            print("Bob doesn't look up immediately.")
+            print('  "Pick the one that picks you. That\'s always been my advice."')
+            print('  "The other one already knows you\'re here."')
+            print("─" * 40)
+            print("(Scene 2 — Starter Selection — coming soon.)")
+            return
+
+        # Generic response for other locations
+        print("There's no door to enter here.")
 
     def _cmd_talk(self, arg: str) -> None:
         target = arg.strip().lower()
@@ -248,11 +297,10 @@ class GameEngine:
             print("You don't have anything to check a map on.")
             return
         if not self.state.flags["phone_unlocked"]:
-            print(
-                "The phone is off. Type 'use phone' to turn it on."
-            )
+            print("The phone is off. Type 'use phone' to turn it on.")
             return
-        print(render_map(self.state.current_location))
+        discovered = set(self.state.discovered_locations)
+        print(render_map(self.state.current_location, discovered))
 
     def _cmd_use(self, arg: str) -> None:
         item = arg.strip().lower()
@@ -326,6 +374,7 @@ class GameEngine:
         print("  ask [npc] [topic]        — ask something specific (e.g. ask mom nate)")
         print("  ask about [topic]        — shorthand when only one NPC is present")
         print("  tell me about [topic]    — natural phrasing, same as ask about")
+        print("  tell mom [your plan]     — e.g. 'tell mom i'm going' to commit to leaving")
         print("  inventory (or inv)       — show what you're carrying")
         if self.state.flags["has_old_phone"]:
             print("  use phone                — open the old phone")
@@ -357,10 +406,16 @@ class GameEngine:
             print("\nYour mom is here, in her chair. She hears you come down.")
             print(self.objectives.set_objective(self.state, "talk_to_mom"))
 
-        elif location_id == "front_door" and self.state.flags["permission_granted"]:
-            print("The door is unlocked. You can go out whenever you're ready.")
+        elif location_id == "front_door" and self.state.flags["told_mom_plans"]:
+            print("The door is unlocked. Type 'go out' when you're ready.")
+        elif location_id == "front_door" and not self.state.flags["told_mom_plans"]:
+            print("You stand at the door. Something tells you to talk to your mom first.")
 
     def _on_town_node_entered(self, node_id: str) -> None:
+        # Track exploration for map fog-of-war
+        if node_id not in self.state.discovered_locations:
+            self.state.discovered_locations.append(node_id)
+
         if node_id == "keepers_dome" and not self.state.flags["dome_entered"]:
             self.state.flags["dome_entered"] = True
             self._scene2_hook()
@@ -368,7 +423,7 @@ class GameEngine:
     # ── House → Town transition ───────────────────────────────────────────────
 
     def _transition_to_town(self) -> None:
-        """Player steps out of GP's House. Mom hands over the phone. Town begins."""
+        """Player steps out of GP's House into town."""
         print("\n" + "─" * 40)
         print(f"You open the door, {self.state.player_name}.")
         print("The street is quieter than you expected.")
@@ -376,22 +431,14 @@ class GameEngine:
         print("You don't look back at the house.")
         print("─" * 40)
 
-        # Mom hands over the phone at the threshold
-        print(
-            "\nBefore the door closes — your mom's hand on your arm, just for a second."
-        )
-        print('  "Here. Take this."')
-        print("  She holds out an old phone, screen dark, worn at the corners.")
-        print('  "It\'s got a map. And some of Bob\'s notes — if you can get in."')
-        print('  "Just... check in when you can."')
-        print()
-
         self.state.flags["in_town"] = True
-        self.state.flags["has_old_phone"] = True
-        self.state.inventory.append("Old phone (Mom's)")
         self.state.current_location = "front_street"
+        # Seed discovery with starting location
+        if "front_street" not in self.state.discovered_locations:
+            self.state.discovered_locations.append("front_street")
 
-        print("(The phone is off. Type 'use phone' to turn it on.)")
+        if self.state.flags["has_old_phone"]:
+            print("\n(The phone is off. Type 'use phone' to turn it on.)")
         print(self.objectives.set_objective(self.state, "find_bob", added=True))
         print("\nType 'look' to take in Front Street.")
 
@@ -408,4 +455,4 @@ class GameEngine:
         print('  "I was wondering when you\'d show up."')
         print("─" * 40)
         print(self.objectives.set_objective(self.state, "enter_dome", added=True))
-        print("\n(Type 'look' to take in the Dome. Type 'inspect door' to get closer.)")
+        print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")

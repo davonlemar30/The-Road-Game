@@ -9,9 +9,10 @@ LOCATIONS = {
         "name": "Bedroom",
         "description": (
             "Warm and still. The ceiling fan ticks on its slowest setting. "
-            "Books you've half-read, notes you've half-started, a chair that holds "
-            "more clothes than sitting. You've been in this same groove long enough "
-            "that the floor knows your footsteps."
+            "A TV on the dresser, PS5 underneath it — controller cord dangling. "
+            "A gaming computer in the corner, fan humming even now. "
+            "Books you've half-read, notes you've half-started. "
+            "You've been in this same groove long enough that the floor knows your footsteps."
         ),
         "exits": {"south": "living_room"},
         "interactables": {
@@ -34,6 +35,31 @@ LOCATIONS = {
             "bed": (
                 "Rumpled blankets. Not slept-in so much as inhabited. "
                 "You've been here a long time."
+            ),
+            "tv": (
+                "A decent-sized flatscreen, older but still good. "
+                "The PS5 underneath has a faint blue light — on standby. "
+                "Controller on the floor where you left it. "
+                "The game hasn't saved in a while."
+            ),
+            "ps5": (
+                "Blue standby light. You've put more hours into it than you'd admit. "
+                "Lately it just sits there."
+            ),
+            "computer": (
+                "A mid-tier gaming rig, built piece by piece. The fan hums constantly. "
+                "The monitor is dark but a browser tab is still open from last night. "
+                "You can inspect it closer. Type 'inspect notes' to read what's on the screen."
+            ),
+            "notes": (
+                "A browser tab left open: a forum thread titled 'Astari bonding — what nobody tells you.' "
+                "Below it, a text doc you started yourself:\n\n"
+                "  > Astari aren't just for travel. Read three separate accounts now.\n"
+                "  > Something about the bond changes the way you think — not the thoughts,\n"
+                "  > but the *speed*. Like having backup processing.\n"
+                "  > Bob's lab is the closest place. He's been asking about me apparently.\n"
+                "  > Keep putting it off. Don't know why.\n\n"
+                "The doc is dated three weeks ago."
             ),
         },
     },
