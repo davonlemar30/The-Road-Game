@@ -10,15 +10,21 @@ def parse_command(raw: str) -> tuple[str, str]:
     verb = parts[0]
     arg = parts[1] if len(parts) > 1 else ""
 
-    if verb in {"examine", "x"}:
+    # Verb synonyms
+    if verb in {"examine", "x", "look at"}:
         verb = "inspect"
     elif verb in {"move", "walk"}:
         verb = "go"
-    elif verb in {"speak"}:
+    elif verb in {"speak", "talk to"}:
         verb = "talk"
     elif verb in {"quit", "exit"}:
         verb = "quit"
+    elif verb in {"inventory", "inv", "i", "items"}:
+        verb = "inventory"
+    elif verb == "l":
+        verb = "look"
 
+    # Directional shortcuts
     if verb in {"n", "north"}:
         return "go", "north"
     if verb in {"s", "south"}:
