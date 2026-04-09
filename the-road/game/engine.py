@@ -3,10 +3,12 @@
 from data.npcs import NPCS
 from game.dialogue import DialogueManager
 from game.display import print_dialogue, print_hint
+from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import load_game, save_game
 from game.state import GameState
+from game.town import TownWorld
 from game.world import World
 
 
@@ -14,6 +16,7 @@ class GameEngine:
     def __init__(self) -> None:
         self.state = GameState()
         self.world = World()
+        self.town = TownWorld()
         self.objectives = ObjectiveTracker()
         self.dialogue = DialogueManager()
 
@@ -77,7 +80,10 @@ class GameEngine:
 
     def _handle_command(self, verb: str, arg: str) -> None:
         if not verb:
-            print("Type a command. Try: look, go south, inspect mirror, talk mom, help.")
+            if self.state.flags["in_town"]:
+                print("Type a command. Try: look, go square, where, inspect door, talk bob, help.")
+            else:
+                print("Type a command. Try: look, go south, inspect mirror, talk mom, help.")
             return
 
         handlers = {
@@ -86,6 +92,9 @@ class GameEngine:
             "inspect":   self._cmd_inspect,
             "talk":      self._cmd_talk,
             "ask":       self._cmd_ask,
+            "where":     self._cmd_where,
+            "map":       self._cmd_map,
+            "use":       self._cmd_use,
             "inventory": self._cmd_inventory,
             "save":      self._cmd_save,
             "load":      self._cmd_load,
@@ -104,9 +113,18 @@ class GameEngine:
     # ── Handlers ─────────────────────────────────────────────────────────────
 
     def _cmd_look(self, _arg: str) -> None:
-        print(self.world.describe_location(self.state.current_location))
+        if self.state.flags["in_town"]:
+            print(self.town.describe(self.state.current_location))
+        else:
+            print(self.world.describe_location(self.state.current_location))
 
     def _cmd_go(self, arg: str) -> None:
+        if self.state.flags["in_town"]:
+            self._cmd_go_town(arg)
+        else:
+            self._cmd_go_house(arg)
+
+    def _cmd_go_house(self, arg: str) -> None:
         direction = arg.strip().lower()
         if not direction:
             print("Go where? Example: go south")
@@ -119,7 +137,7 @@ class GameEngine:
                     "You don't feel ready to go — not yet."
                 )
                 return
-            self._end_game()
+            self._transition_to_town()
             return
 
         success, result = self.world.move(self.state.current_location, direction)
@@ -133,11 +151,31 @@ class GameEngine:
         print("(Type 'look' to take in the room.)")
         self._on_location_entered(result)
 
+    def _cmd_go_town(self, arg: str) -> None:
+        target = arg.strip()
+        if not target:
+            print("Go where? Example: go square  /  go keeper's dome  /  go market")
+            return
+
+        success, result = self.town.move_to(self.state.current_location, target)
+        if not success:
+            print(result)
+            return
+
+        self.state.current_location = result
+        node_name = self.town.get_node(result)["name"]
+        print(f"\nYou make your way to {node_name}.")
+        print("(Type 'look' to take in your surroundings.)")
+        self._on_town_node_entered(result)
+
     def _cmd_inspect(self, arg: str) -> None:
         if not arg:
             print("Inspect what? (example: inspect mirror)")
             return
-        print(self.world.inspect(self.state.current_location, arg))
+        if self.state.flags["in_town"]:
+            print(self.town.inspect(self.state.current_location, arg))
+        else:
+            print(self.world.inspect(self.state.current_location, arg))
 
     def _cmd_talk(self, arg: str) -> None:
         target = arg.strip().lower()
@@ -148,6 +186,10 @@ class GameEngine:
         mother_data = NPCS["mother"]
         if target not in mother_data["aliases"]:
             print(f"There's no one called '{target}' here.")
+            return
+
+        if self.state.flags["in_town"]:
+            print("Your mom isn't here.")
             return
 
         if self.state.current_location != mother_data["location"]:
@@ -177,7 +219,7 @@ class GameEngine:
             print(f"You don't see '{target}' to ask.")
             return
 
-        if self.state.current_location != mother_data["location"]:
+        if self.state.flags["in_town"] or self.state.current_location != mother_data["location"]:
             print("Your mom isn't here.")
             return
 
@@ -185,6 +227,67 @@ class GameEngine:
         if lines:
             print_dialogue(lines)
         print_hint(hint)
+
+    def _cmd_where(self, _arg: str) -> None:
+        if not self.state.flags["in_town"]:
+            loc = self.world.get_location(self.state.current_location)
+            exits = ", ".join(loc["exits"].keys())
+            print(f"\nYou're in the {loc['name']}. Exits: {exits}")
+            return
+
+        node = self.town.get_node(self.state.current_location)
+        nearby = self.town.neighbors_text(self.state.current_location)
+        print(f"\nYou're at {node['name']}.")
+        print(f"Nearby: {nearby}")
+
+    def _cmd_map(self, _arg: str) -> None:
+        if not self.state.flags["in_town"]:
+            print("You're inside. Step outside first.")
+            return
+        if not self.state.flags["has_old_phone"]:
+            print("You don't have anything to check a map on.")
+            return
+        if not self.state.flags["phone_unlocked"]:
+            print(
+                "The phone is off. Type 'use phone' to turn it on."
+            )
+            return
+        print(render_map(self.state.current_location))
+
+    def _cmd_use(self, arg: str) -> None:
+        item = arg.strip().lower()
+        if not item:
+            print("Use what?")
+            return
+
+        if item in {"phone", "old phone", "mom's phone"}:
+            self._use_phone()
+            return
+
+        print(f"You're not sure how to use '{item}'.")
+
+    def _use_phone(self) -> None:
+        if not self.state.flags["has_old_phone"]:
+            print("You don't have a phone.")
+            return
+
+        if self.state.flags["phone_unlocked"]:
+            print(
+                "The phone's on. You have: map, field notes (locked), contacts (locked).\n"
+                "Type 'map' to see ISO Town."
+            )
+            return
+
+        # First unlock
+        self.state.flags["phone_unlocked"] = True
+        print(
+            "\nThe phone powers on with a low hum. The screen is scratched but clear."
+        )
+        print(
+            "There's a map of ISO Town, field notes locked behind a passphrase, "
+            "and a contacts list that hasn't been updated in a while."
+        )
+        print("\nType 'map' to see where you are.")
 
     def _cmd_inventory(self, _arg: str) -> None:
         if not self.state.inventory:
@@ -211,14 +314,23 @@ class GameEngine:
 
     def _cmd_help(self, _arg: str) -> None:
         print("\nCommands:")
-        print("  look (or l)              — describe the room and exits")
-        print("  go [direction]           — north / south / east / west / out")
-        print("  inspect [object]         — examine something in the room")
+        print("  look (or l)              — describe where you are")
+        print("  where                    — quick location + nearby places")
+        if self.state.flags["in_town"]:
+            print("  go [place]               — travel to a nearby location by name")
+            print("                             (e.g. go square  /  go keeper's dome)")
+        else:
+            print("  go [direction]           — north / south / east / west / out")
+        print("  inspect [object]         — examine something here")
         print("  talk [npc]               — start a conversation  (e.g. talk mom)")
         print("  ask [npc] [topic]        — ask something specific (e.g. ask mom nate)")
         print("  ask about [topic]        — shorthand when only one NPC is present")
         print("  tell me about [topic]    — natural phrasing, same as ask about")
         print("  inventory (or inv)       — show what you're carrying")
+        if self.state.flags["has_old_phone"]:
+            print("  use phone                — open the old phone")
+        if self.state.flags["phone_unlocked"]:
+            print("  map                      — show ISO Town map")
         print("  objective                — show current objective")
         print("  save / load              — save or restore your progress")
         print("  help                     — show this list")
@@ -231,7 +343,10 @@ class GameEngine:
             print("No objective set.")
 
     def _cmd_quit(self, _arg: str) -> None:
-        print("\nYou stay in the house a little longer.")
+        if self.state.flags["in_town"]:
+            print("\nYou stop on the road for a moment.")
+        else:
+            print("\nYou stay in the house a little longer.")
         self.state.running = False
 
     # ── Location events ───────────────────────────────────────────────────────
@@ -245,16 +360,52 @@ class GameEngine:
         elif location_id == "front_door" and self.state.flags["permission_granted"]:
             print("The door is unlocked. You can go out whenever you're ready.")
 
-    # ── Scene end ─────────────────────────────────────────────────────────────
+    def _on_town_node_entered(self, node_id: str) -> None:
+        if node_id == "keepers_dome" and not self.state.flags["dome_entered"]:
+            self.state.flags["dome_entered"] = True
+            self._scene2_hook()
 
-    def _end_game(self) -> None:
+    # ── House → Town transition ───────────────────────────────────────────────
+
+    def _transition_to_town(self) -> None:
+        """Player steps out of GP's House. Mom hands over the phone. Town begins."""
         print("\n" + "─" * 40)
         print(f"You open the door, {self.state.player_name}.")
         print("The street is quieter than you expected.")
         print("The air is different out here — cooler, more honest.")
         print("You don't look back at the house.")
-        print("The road is uncertain.")
-        print("But it is finally yours to walk.")
         print("─" * 40)
-        print("\n=== END OF SCENE ONE ===\n")
-        self.state.running = False
+
+        # Mom hands over the phone at the threshold
+        print(
+            "\nBefore the door closes — your mom's hand on your arm, just for a second."
+        )
+        print('  "Here. Take this."')
+        print("  She holds out an old phone, screen dark, worn at the corners.")
+        print('  "It\'s got a map. And some of Bob\'s notes — if you can get in."')
+        print('  "Just... check in when you can."')
+        print()
+
+        self.state.flags["in_town"] = True
+        self.state.flags["has_old_phone"] = True
+        self.state.inventory.append("Old phone (Mom's)")
+        self.state.current_location = "front_street"
+
+        print("(The phone is off. Type 'use phone' to turn it on.)")
+        print(self.objectives.set_objective(self.state, "find_bob", added=True))
+        print("\nType 'look' to take in Front Street.")
+
+    # ── Scene 2 hook ─────────────────────────────────────────────────────────
+
+    def _scene2_hook(self) -> None:
+        """Placeholder event when player first arrives at The Keeper's Dome."""
+        print("\n" + "─" * 40)
+        print("The Dome is low and round, set back from everything else.")
+        print("The door is barely open. From inside, something moves.")
+        print("Not threatening. Aware.")
+        print()
+        print("A voice from inside — unhurried.")
+        print('  "I was wondering when you\'d show up."')
+        print("─" * 40)
+        print(self.objectives.set_objective(self.state, "enter_dome", added=True))
+        print("\n(Type 'look' to take in the Dome. Type 'inspect door' to get closer.)")

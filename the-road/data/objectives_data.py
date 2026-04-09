@@ -6,4 +6,6 @@ OBJECTIVES = {
     "talk_to_mom": "Talk to your mom.",
     "find_nate": "Look for Nate.",
     "leave_house": "Leave the house.",
+    "find_bob": "Find Professor Bob at The Keeper's Dome.",
+    "enter_dome": "Enter The Keeper's Dome.",
 }
