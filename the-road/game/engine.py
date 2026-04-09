@@ -2,6 +2,7 @@
 
 from data.npcs import NPCS
 from game.dialogue import DialogueManager
+from game.display import print_dialogue, print_hint
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import load_game, save_game
@@ -154,9 +155,9 @@ class GameEngine:
             return
 
         was_talked = self.state.flags["mom_talked"]
-        lines = self.dialogue.talk_to_mother(self.state)
-        for line in lines:
-            print(line)
+        lines, hint = self.dialogue.talk_to_mother(self.state)
+        print_dialogue(lines)
+        print_hint(hint)
 
         # Set objective only on the first completed conversation
         if not was_talked and self.state.flags["mom_talked"]:
@@ -180,9 +181,10 @@ class GameEngine:
             print("Your mom isn't here.")
             return
 
-        lines = self.dialogue.ask_mom(self.state, topic)
-        for line in lines:
-            print(line)
+        lines, hint = self.dialogue.ask_mom(self.state, topic)
+        if lines:
+            print_dialogue(lines)
+        print_hint(hint)
 
     def _cmd_inventory(self, _arg: str) -> None:
         if not self.state.inventory:
@@ -209,17 +211,18 @@ class GameEngine:
 
     def _cmd_help(self, _arg: str) -> None:
         print("\nCommands:")
-        print("  look (or l)                  — describe the room and exits")
-        print("  go [direction]               — north / south / east / west / out")
-        print("  inspect [object]             — examine something in the room")
-        print("  talk [npc]                   — start a conversation")
-        print("  ask [npc] [topic]            — ask a specific question")
-        print("  inventory (or inv)           — show what you're carrying")
-        print("  objective                    — show current objective")
-        print("  save                         — save your progress")
-        print("  load                         — load a saved game")
-        print("  help                         — show this list")
-        print("  quit                         — exit the game")
+        print("  look (or l)              — describe the room and exits")
+        print("  go [direction]           — north / south / east / west / out")
+        print("  inspect [object]         — examine something in the room")
+        print("  talk [npc]               — start a conversation  (e.g. talk mom)")
+        print("  ask [npc] [topic]        — ask something specific (e.g. ask mom nate)")
+        print("  ask about [topic]        — shorthand when only one NPC is present")
+        print("  tell me about [topic]    — natural phrasing, same as ask about")
+        print("  inventory (or inv)       — show what you're carrying")
+        print("  objective                — show current objective")
+        print("  save / load              — save or restore your progress")
+        print("  help                     — show this list")
+        print("  quit                     — exit the game")
 
     def _cmd_objective(self, _arg: str) -> None:
         if self.state.current_objective:

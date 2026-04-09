@@ -16,13 +16,9 @@ MOTHER_SCENE1 = [
     '"Just... be careful if you go lookin\' for him, alright?"',
 ]
 
-# Shown after Mom's monologue — prompts the player
-MOTHER_SCENE1_PROMPT = (
-    "\nMom is still nearby. You can ask her things if you want.\n"
-    "  ask mom nate       — about Nate\n"
-    "  ask mom astari     — about Astari\n"
-    "  ask mom outside    — about what's out there\n"
-    "  ask mom bob        — about Professor Bob\n"
+# Single-line hint shown once after Mom's monologue
+MOTHER_SCENE1_HINT = (
+    "(She's still here if you have questions — nate / astari / outside / bob)"
 )
 
 # Dismissal lines — after scene1 dialogue is done, repeated talks
@@ -50,7 +46,7 @@ MOM_QA: dict[str, dict] = {
             '"That boy has a lot of fire and not enough sense to point it anywhere safe."',
             '"Somebody needs to go check on him before he does something he can\'t walk back."',
         ],
-        "hint": "  ask mom nate trail | ask mom nate trouble | ask mom nate dangerous",
+        "hint": "(dig deeper: nate trail  •  nate trouble  •  nate dangerous)",
         "followups": {
             "nate trail": [
                 '"The Mystic Trail?"',
@@ -85,7 +81,7 @@ MOM_QA: dict[str, dict] = {
             '"The world out there — the roads, the trails between towns — it\'s not built for people traveling alone anymore."',
             '"Having an Astari changes that."',
         ],
-        "hint": "  ask mom astari bond | ask mom astari dangerous | ask mom astari get",
+        "hint": "(dig deeper: astari bond  •  astari dangerous  •  astari get)",
         "followups": {
             "astari bond": [
                 '"Bonding takes time. It\'s not like picking up a tool."',
@@ -115,7 +111,7 @@ MOM_QA: dict[str, dict] = {
             '"The Crests help — they signal that you\'ve been tested, that you carry yourself a certain way."',
             '"But you don\'t have one yet. So you go careful."',
         ],
-        "hint": "  ask mom outside crests | ask mom outside town | ask mom outside collapse",
+        "hint": "(dig deeper: outside crests  •  outside town  •  outside collapse)",
         "followups": {
             "outside crests": [
                 '"Crests are how people read you out there."',
@@ -150,7 +146,7 @@ MOM_QA: dict[str, dict] = {
             '"Then this morning he\'s knocking on my door before I\'ve even had my coffee."',
             '"Looking like he hadn\'t slept. Asking about Nate."',
         ],
-        "hint": "  ask mom bob lab | ask mom bob nate | ask mom bob astari",
+        "hint": "(dig deeper: bob lab  •  bob nate  •  bob astari)",
         "followups": {
             "bob lab": [
                 '"The Keeper\'s Dome, down near the edge of town."',
