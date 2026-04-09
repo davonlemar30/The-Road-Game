@@ -1,5 +1,25 @@
 """Dialogue content for Scene One: 'Still Here'."""
 
+# Mom's blessing — plays when player tells mom they're heading out (forbidden trail / plan)
+# Triggers told_mom_plans + permission_granted + phone handoff
+MOM_BLESSING = [
+    "She goes quiet for a second. Just a second.",
+    '"So you\'re really going."',
+    "Not a question. She already knew.",
+    '"Alright. But you go see Professor Bob first."',
+    '"Get yourself an Astari before you do anything else — I mean it."',
+    '"You can\'t go into the Forbidden Trail without one. Not safely."',
+    "She disappears into the kitchen. Comes back with an old phone in her hand.",
+    "Screen scratched. Worn at the corners.",
+    '"Take this. It\'s got a map of Iso Town and some of Bob\'s notes on it."',
+    '"Passphrase on the notes is locked — Bob\'ll give you the code when you pick up your Astari."',
+    '"Check in when you can."',
+    "A beat. She doesn't say anything else.",
+    '"Go."',
+]
+
+MOM_BLESSING_HINT = "(You have Mom's old phone. Type 'go south' to head to the front door.)"
+
 # Mom's main monologue — plays on first talk, Scene 1
 # Voice: warm, Southern-inflected, tired but loving. She checks practical things first.
 MOTHER_SCENE1 = [
@@ -135,6 +155,19 @@ MOM_QA: dict[str, dict] = {
                 '"That\'s why you need people — and an Astari — you can trust."',
             ],
         },
+    },
+
+    # ── FORBIDDEN TRAIL / PLAYER'S PLAN ─────────────────────────────────────
+    # Asking about the forbidden trail or telling mom you're going triggers the blessing.
+    # Handled specially in dialogue.py — this entry is a fallback hint only.
+    "forbidden trail": {
+        "answer": [
+            '"You want to go in there."',
+            "Again — not a question.",
+            '"Then say it. Tell me you\'re going."',
+        ],
+        "hint": "(try: tell mom i'm going  •  ask mom i'll go)",
+        "followups": {},
     },
 
     # ── PROFESSOR BOB ────────────────────────────────────────────────────────

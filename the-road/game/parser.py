@@ -43,15 +43,25 @@ def parse_command(raw: str) -> tuple:
     if verb == "ask" and arg.startswith("about "):
         arg = "mom " + arg[6:]
 
-    # ── "tell me about X" / "tell me X" → "ask mom X" ────────────────────────
-    # Covers: "tell me about nate", "tell me about astari"
+    # ── "tell me about X" / "tell me X" / "tell mom X" → "ask mom X" ─────────
+    # Covers: "tell me about nate", "tell mom i'm going", "tell mom plan"
     if verb == "tell":
         remainder = arg
         if remainder.startswith("me "):
             remainder = remainder[3:]
+        elif remainder.startswith("mom "):
+            remainder = remainder[4:]
         if remainder.startswith("about "):
             remainder = remainder[6:]
         return "ask", "mom " + remainder
+
+    # ── "enter" / "go inside" / "go in" ──────────────────────────────────────
+    if verb == "enter":
+        return "enter", arg
+    if verb == "knock":
+        return "enter", arg
+    if verb == "open" and arg in {"door", "the door", ""}:
+        return "enter", "door"
 
     # ── Directional shortcuts ─────────────────────────────────────────────────
     if verb in {"n", "north"}:

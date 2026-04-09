@@ -6,12 +6,22 @@ from data.dialogue_data import (
     MOTHER_AFTER,
     MOTHER_SCENE1,
     MOTHER_SCENE1_HINT,
+    MOM_BLESSING,
+    MOM_BLESSING_HINT,
     MOM_QA,
 )
 
 # Words stripped from the front of a topic before lookup.
 # Lets "ask mom about nate" and "ask mom nate" resolve identically.
 _TOPIC_FILLERS = ("about ", "regarding ", "on ", "the ")
+
+# Topics that trigger the mom's blessing + phone handoff.
+# Any of these phrases means the player is committing to going out.
+_PLAN_TOPICS = {
+    "plan", "go", "going", "leave", "leaving", "i'm going", "im going",
+    "i'll go", "ill go", "forbidden", "forbidden trail", "trail",
+    "i'm ready", "im ready", "ready", "let's go", "lets go",
+}
 
 
 def _strip_topic_fillers(topic: str) -> str:
@@ -31,8 +41,11 @@ class DialogueManager:
         """
         if not state.flags["mom_talked"]:
             state.flags["mom_talked"] = True
-            state.flags["permission_granted"] = True
+            # permission_granted is NOT set here — player must tell mom their plan first
             return list(MOTHER_SCENE1), MOTHER_SCENE1_HINT
+
+        if state.flags["told_mom_plans"]:
+            return ['She nods toward the door. "Go while you still mean it."'], ""
 
         return list(MOTHER_AFTER), ""
 
@@ -54,6 +67,18 @@ class DialogueManager:
             ], ""
 
         topic = _strip_topic_fillers(topic.strip().lower())
+
+        # ── Blessing trigger: player commits to going ─────────────────────────
+        if topic in _PLAN_TOPICS and not state.flags["told_mom_plans"]:
+            state.flags["told_mom_plans"] = True
+            state.flags["permission_granted"] = True
+            state.flags["has_old_phone"] = True
+            if "Old phone (Mom's)" not in state.inventory:
+                state.inventory.append("Old phone (Mom's)")
+            return list(MOM_BLESSING), MOM_BLESSING_HINT
+
+        if topic in _PLAN_TOPICS and state.flags["told_mom_plans"]:
+            return ['She nods at the door. "You already know. Go."'], ""
 
         if not topic:
             return [], "(ask her about: nate  •  astari  •  outside  •  bob)"
