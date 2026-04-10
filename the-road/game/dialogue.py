@@ -10,6 +10,7 @@ from data.dialogue_data import (
     MOM_BLESSING_HINT,
     MOM_QA,
 )
+from data.town_npcs_data import TOWN_NPC_DIALOGUE
 
 # Words stripped from the front of a topic before lookup.
 # Lets "ask mom about nate" and "ask mom nate" resolve identically.
@@ -20,8 +21,10 @@ _TOPIC_FILLERS = ("about ", "regarding ", "on ", "the ")
 _PLAN_TOPICS = {
     "plan", "go", "going", "leave", "leaving", "i'm going", "im going",
     "i'll go", "ill go", "forbidden", "forbidden trail", "trail",
-    "i'm ready", "im ready", "ready", "let's go", "lets go",
+    "i'm ready", "im ready", "ready", "let's go", "lets go", "astrali", "astari",
 }
+
+_ASTRALI_ALIASES = {"astari", "astrali"}
 
 
 def _strip_topic_fillers(topic: str) -> str:
@@ -32,6 +35,13 @@ def _strip_topic_fillers(topic: str) -> str:
 
 
 class DialogueManager:
+    def _normalize_topic(self, topic: str) -> str:
+        cleaned = _strip_topic_fillers(topic.strip().lower())
+        if cleaned in _ASTRALI_ALIASES:
+            return "astari"
+        if cleaned.startswith("astari "):
+            cleaned = "astrali " + cleaned[len("astari "):]
+        return cleaned
 
     def talk_to_mother(self, state) -> tuple:
         """
@@ -48,6 +58,67 @@ class DialogueManager:
             return ['She nods toward the door. "Go while you still mean it."'], ""
 
         return list(MOTHER_AFTER), ""
+
+    def talk_to_bob(self, state) -> tuple:
+        if not state.flags["codex_given"]:
+            return (
+                [
+                    '"You made it. Good." Bob gestures at a wrapped parcel on the bench.',
+                    '"Nate\'s been chasing trail anomalies. I need this Codex in his hands, not on my shelf."',
+                    '"Take it to Mystic Trail. He\'ll be near the overlook if he\'s anywhere."',
+                ],
+                "(ask him about: nate  •  codex  •  astrali)",
+            )
+        if state.flags["codex_delivered"] and not state.flags["mom_blessing_available"]:
+            return (
+                [
+                    '"You found him? Good."',
+                    '"Before anything else: go talk to your mom. Then come back and we do this right."',
+                ],
+                "",
+            )
+        return (
+            ['"You know the sequence: family first, then the bond. We\'re close."'],
+            "(ask him about: astrali  •  trail)",
+        )
+
+    def ask_bob(self, state, topic: str) -> tuple:
+        topic = self._normalize_topic(topic)
+        answers = {
+            "nate": [
+                '"Nate was mapping the Mystic-Forbidden split. He said the Field felt noisy lately."',
+                '"He doesn\'t always know when to stop. That\'s why I asked you."',
+            ],
+            "codex": [
+                '"It\'s a calibrated field guide. Not just notes — it helps stabilize route decisions."',
+                '"Nate should have had his copy a week ago."',
+            ],
+            "trail": [
+                '"Mystic is manageable. Forbidden is not, not without a bonded Astrali."',
+            ],
+            "astari": [
+                '"Astrali choose as much as we do. I can guide the process, not force it."',
+                '"Come back after you handle home. Half-commitments get people hurt."',
+            ],
+        }
+        if topic in answers:
+            return answers[topic], ""
+        return ['"Keep it simple: Nate first, then we handle your bond."'], ""
+
+    def talk_to_town_npc(self, npc_id: str) -> tuple:
+        info = TOWN_NPC_DIALOGUE.get(npc_id)
+        if not info:
+            return ["They nod, but don't have much to add right now."], ""
+        return list(info["talk"]), info.get("hint", "")
+
+    def ask_town_npc(self, npc_id: str, topic: str) -> tuple:
+        info = TOWN_NPC_DIALOGUE.get(npc_id)
+        if not info:
+            return ["They shrug. Nothing useful."], ""
+        topic = self._normalize_topic(topic)
+        if topic in info.get("topics", {}):
+            return list(info["topics"][topic]), ""
+        return [f'"Not sure about {topic}. Try asking someone closer to it."'], info.get("hint", "")
 
     def ask_mom(self, state, topic: str) -> tuple:
         """
@@ -66,9 +137,18 @@ class DialogueManager:
                 "Try 'talk mom' first.",
             ], ""
 
-        topic = _strip_topic_fillers(topic.strip().lower())
+        topic = self._normalize_topic(topic)
 
         # ── Blessing trigger: player commits to going ─────────────────────────
+        if topic in _PLAN_TOPICS and not state.flags["mom_blessing_available"]:
+            return (
+                [
+                    "She studies you for a moment.",
+                    '"If this is about leaving, talk to Bob first. Then come back and tell me."',
+                ],
+                "",
+            )
+
         if topic in _PLAN_TOPICS and not state.flags["told_mom_plans"]:
             state.flags["told_mom_plans"] = True
             state.flags["permission_granted"] = True
@@ -81,7 +161,7 @@ class DialogueManager:
             return ['She nods at the door. "You already know. Go."'], ""
 
         if not topic:
-            return [], "(ask her about: nate  •  astari  •  outside  •  bob)"
+            return [], "(ask her about: bob said  •  nate  •  astrali  •  dangerous)"
 
         # ── Exact top-level match ─────────────────────────────────────────────
         entry = MOM_QA.get(topic)
@@ -114,5 +194,5 @@ class DialogueManager:
         # ── No match ─────────────────────────────────────────────────────────
         return (
             [f'She doesn\'t have much to say about "{topic}".'],
-            "(ask her about: nate  •  astari  •  outside  •  bob)",
+            "(ask her about: bob said  •  nate  •  astrali  •  dangerous)",
         )

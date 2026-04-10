@@ -93,6 +93,8 @@ class GameEngine:
             "inspect":   self._cmd_inspect,
             "talk":      self._cmd_talk,
             "ask":       self._cmd_ask,
+            "browse":    self._cmd_browse,
+            "buy":       self._cmd_buy,
             "where":     self._cmd_where,
             "map":       self._cmd_map,
             "use":       self._cmd_use,
@@ -122,12 +124,12 @@ class GameEngine:
             if (
                 self.state.current_location == "living_room"
                 and self.state.flags["met_mother"]
-                and not self.state.flags["told_mom_plans"]
+                and not self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is in her chair. She's aware of you."
             elif (
                 self.state.current_location == "living_room"
-                and self.state.flags["told_mom_plans"]
+                and self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is still in her chair. She gives you a look that says: go."
             print(desc)
@@ -145,7 +147,7 @@ class GameEngine:
             return
 
         if self.state.current_location == "front_door" and direction == "out":
-            if not self.state.flags["told_mom_plans"]:
+            if not self.state.flags["mom_talked"]:
                 print(
                     "Something holds you at the threshold. "
                     "You haven't talked to your mom yet — not really."
@@ -211,20 +213,62 @@ class GameEngine:
                 self.state.flags["dome_entered"] = True
                 self._scene2_hook()
                 return
-            # Already triggered — player is just knocking / entering again
+
+            # Scene 2 setup: Bob gives Nate's Codex after the intro event
+            if not self.state.flags["codex_given"]:
+                self.state.flags["codex_given"] = True
+                if "Nate's Codex Parcel" not in self.state.inventory:
+                    self.state.inventory.append("Nate's Codex Parcel")
+                print("\nThe door opens the rest of the way and Bob waves you in.")
+                print("Audri is already by the equipment table, speaking quietly with him.")
+                print("She glances at you once — measuring, unreadable — then returns to the route map.")
+                print()
+                print('Bob rubs his forehead. "Good timing. I need a favor."')
+                print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
+                print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+                print(self.objectives.set_objective(self.state, "deliver_codex"))
+                print("\n(Type 'go mystic trail' to look for Nate.)")
+                return
+
+            # Post-delivery: Bob sends GP home for Scene 4 conversation
+            if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
+                self.state.flags["mom_blessing_available"] = True
+                print("\nBob checks your face before he checks your hands.")
+                print('"Good. You found Nate." He nods toward the town. "Now go talk to your mom."')
+                print('"No half-steps. Come back after that conversation and we\'ll continue."')
+                print(self.objectives.set_objective(self.state, "mom_blessing"))
+                return
+
+            # Scene 4+ follow-up
             print("\nThe door is open. You step inside.")
             print("─" * 40)
             print("Professor Bob is at his workbench, back to you.")
-            print("An Astari — small, watchful — sits on a perch near the window.")
-            print("Bob doesn't look up immediately.")
-            print('  "Pick the one that picks you. That\'s always been my advice."')
-            print('  "The other one already knows you\'re here."')
+            if self.state.flags["told_mom_plans"]:
+                print("An Astari — small, watchful — sits on a perch near the window.")
+                print("Bob doesn't look up immediately.")
+                print('  "Pick the one that picks you. That\'s always been my advice."')
+                print('  "The other one already knows you\'re here."')
+                print("(Starter selection is still in progress.)")
+            else:
+                print('Bob says, "When you\'ve had that talk at home, come back."')
             print("─" * 40)
-            print("(Scene 2 — Starter Selection — coming soon.)")
+            return
+
+        if loc == "the_market":
+            print("You drift along the stalls. Try 'browse' to check what vendors have.")
             return
 
         # Generic response for other locations
         print("There's no door to enter here.")
+
+    def _resolve_npc_here(self, target: str) -> str | None:
+        target = target.strip().lower()
+        if not target:
+            return None
+        for npc_id, data in NPCS.items():
+            if target in data["aliases"] and data["location"] == self.state.current_location:
+                return npc_id
+        return None
 
     def _cmd_talk(self, arg: str) -> None:
         target = arg.strip().lower()
@@ -232,29 +276,51 @@ class GameEngine:
             print("Talk to who? (example: talk mom)")
             return
 
-        mother_data = NPCS["mother"]
-        if target not in mother_data["aliases"]:
+        npc_id = self._resolve_npc_here(target)
+        if npc_id is None:
             print(f"There's no one called '{target}' here.")
             return
 
-        if self.state.flags["in_town"]:
-            print("Your mom isn't here.")
-            return
+        if npc_id == "mother":
+            was_talked = self.state.flags["mom_talked"]
+            lines, hint = self.dialogue.talk_to_mother(self.state)
+            if not was_talked and self.state.flags["mom_talked"]:
+                print_dialogue(lines)
+                print_hint(hint)
+                print(self.objectives.set_objective(self.state, "find_bob", added=True))
+                return
+        elif npc_id == "bob":
+            lines, hint = self.dialogue.talk_to_bob(self.state)
+        else:
+            lines, hint = self.dialogue.talk_to_town_npc(npc_id)
 
-        if self.state.current_location != mother_data["location"]:
-            print("Your mom isn't here.")
-            return
-
-        was_talked = self.state.flags["mom_talked"]
-        lines, hint = self.dialogue.talk_to_mother(self.state)
         print_dialogue(lines)
         print_hint(hint)
 
-        # Set objective only on the first completed conversation
-        if not was_talked and self.state.flags["mom_talked"]:
-            print(self.objectives.set_objective(self.state, "find_nate", added=True))
-
     def _cmd_ask(self, arg: str) -> None:
+        trimmed = arg.strip().lower()
+        if trimmed.startswith("about "):
+            topic_only = trimmed[6:].strip()
+            candidates = [
+                npc_id for npc_id, data in NPCS.items()
+                if data["location"] == self.state.current_location
+            ]
+            if len(candidates) == 1:
+                target = candidates[0]
+                topic = topic_only
+                if target == "mother":
+                    lines, hint = self.dialogue.ask_mom(self.state, topic)
+                elif target == "bob":
+                    lines, hint = self.dialogue.ask_bob(self.state, topic)
+                else:
+                    lines, hint = self.dialogue.ask_town_npc(target, topic)
+                if lines:
+                    print_dialogue(lines)
+                print_hint(hint)
+                return
+            print("Ask who about that? (example: ask mom about bob)")
+            return
+
         parts = arg.strip().split(maxsplit=1)
         if not parts:
             print("Ask who? (example: ask mom nate)")
@@ -263,19 +329,52 @@ class GameEngine:
         target = parts[0].lower()
         topic = parts[1] if len(parts) > 1 else ""
 
-        mother_data = NPCS["mother"]
-        if target not in mother_data["aliases"]:
+        npc_id = self._resolve_npc_here(target)
+        if npc_id is None:
             print(f"You don't see '{target}' to ask.")
             return
 
-        if self.state.flags["in_town"] or self.state.current_location != mother_data["location"]:
-            print("Your mom isn't here.")
-            return
-
-        lines, hint = self.dialogue.ask_mom(self.state, topic)
+        if npc_id == "mother":
+            lines, hint = self.dialogue.ask_mom(self.state, topic)
+        elif npc_id == "bob":
+            lines, hint = self.dialogue.ask_bob(self.state, topic)
+        else:
+            lines, hint = self.dialogue.ask_town_npc(npc_id, topic)
         if lines:
             print_dialogue(lines)
         print_hint(hint)
+
+    def _cmd_browse(self, arg: str) -> None:
+        if not self.state.flags["in_town"]:
+            print("There's nothing to browse in here.")
+            return
+        ok, text = self.town.browse(self.state.current_location, arg.strip())
+        print(text)
+
+    def _cmd_buy(self, arg: str) -> None:
+        item = arg.strip().lower()
+        if self.state.current_location != "the_market":
+            print("No one is selling that here.")
+            return
+        if not item:
+            print("Buy what? (example: buy water flask)")
+            return
+        catalog = {
+            "dried fruit pack": ("Dried Fruit Pack", 4),
+            "fruit": ("Dried Fruit Pack", 4),
+            "water flask": ("Clean Water Flask", 3),
+            "flask": ("Clean Water Flask", 3),
+        }
+        if item not in catalog:
+            print("That isn't on display. Try 'browse'.")
+            return
+        name, cost = catalog[item]
+        if self.state.money < cost:
+            print(f"You only have {self.state.money} tokens. {name} costs {cost}.")
+            return
+        self.state.money -= cost
+        self.state.inventory.append(name)
+        print(f"You buy {name} for {cost} tokens. ({self.state.money} tokens left.)")
 
     def _cmd_where(self, _arg: str) -> None:
         if not self.state.flags["in_town"]:
@@ -339,9 +438,9 @@ class GameEngine:
 
     def _cmd_inventory(self, _arg: str) -> None:
         if not self.state.inventory:
-            print("You're not carrying anything.")
+            print(f"You're carrying nothing. Tokens: {self.state.money}")
         else:
-            print("You have:")
+            print(f"You have ({self.state.money} tokens):")
             for item in self.state.inventory:
                 print(f"  - {item}")
 
@@ -372,6 +471,8 @@ class GameEngine:
         print("  inspect [object]         — examine something here")
         print("  talk [npc]               — start a conversation  (e.g. talk mom)")
         print("  ask [npc] [topic]        — ask something specific (e.g. ask mom nate)")
+        print("  browse [shop]            — view nearby stalls/shop stock")
+        print("  buy [item]               — purchase a simple item if available")
         print("  ask about [topic]        — shorthand when only one NPC is present")
         print("  tell me about [topic]    — natural phrasing, same as ask about")
         print("  tell mom [your plan]     — e.g. 'tell mom i'm going' to commit to leaving")
@@ -408,7 +509,7 @@ class GameEngine:
 
         elif location_id == "front_door" and self.state.flags["told_mom_plans"]:
             print("The door is unlocked. Type 'go out' when you're ready.")
-        elif location_id == "front_door" and not self.state.flags["told_mom_plans"]:
+        elif location_id == "front_door" and not self.state.flags["mom_talked"]:
             print("You stand at the door. Something tells you to talk to your mom first.")
 
     def _on_town_node_entered(self, node_id: str) -> None:
@@ -419,6 +520,20 @@ class GameEngine:
         if node_id == "keepers_dome" and not self.state.flags["dome_entered"]:
             self.state.flags["dome_entered"] = True
             self._scene2_hook()
+            return
+
+        if (
+            node_id == "mystic_trail"
+            and self.state.flags["codex_given"]
+            and not self.state.flags["codex_delivered"]
+        ):
+            self.state.flags["codex_delivered"] = True
+            if "Nate's Codex Parcel" in self.state.inventory:
+                self.state.inventory.remove("Nate's Codex Parcel")
+            print("\nNate is exactly where he always is — perched at the overlook.")
+            print('You hand over the parcel. He exhales. "So he finally sent it."')
+            print('He nods back toward town. "Go see Bob. It\'s overdue."')
+            print(self.objectives.set_objective(self.state, "return_to_dome"))
 
     # ── House → Town transition ───────────────────────────────────────────────
 
@@ -439,20 +554,22 @@ class GameEngine:
 
         if self.state.flags["has_old_phone"]:
             print("\n(The phone is off. Type 'use phone' to turn it on.)")
-        print(self.objectives.set_objective(self.state, "find_bob", added=True))
+        if not self.state.flags["codex_given"]:
+            print(self.objectives.set_objective(self.state, "find_bob", added=True))
+        else:
+            print(self.objectives.set_objective(self.state, "find_nate", added=True))
         print("\nType 'look' to take in Front Street.")
 
     # ── Scene 2 hook ─────────────────────────────────────────────────────────
 
     def _scene2_hook(self) -> None:
-        """Placeholder event when player first arrives at The Keeper's Dome."""
+        """Scene 2 intro event when player first arrives at The Keeper's Dome."""
         print("\n" + "─" * 40)
         print("The Dome is low and round, set back from everything else.")
-        print("The door is barely open. From inside, something moves.")
-        print("Not threatening. Aware.")
+        print("The door is barely open. Voices carry from inside — Bob's, and someone unfamiliar.")
         print()
-        print("A voice from inside — unhurried.")
-        print('  "I was wondering when you\'d show up."')
+        print("You catch a glimpse of Audri by the equipment table before she disappears deeper in.")
+        print('Bob calls out, "Come in. I\'ve got something for Nate."')
         print("─" * 40)
-        print(self.objectives.set_objective(self.state, "enter_dome", added=True))
+        print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
         print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")
