@@ -28,6 +28,8 @@ TOWN_NODES: dict[str, dict] = {
             "street": "Worn smooth. A lot of people have passed through here. A lot more will.",
             "neighbors": "A few houses close together. Quiet. People keeping their own hours.",
         },
+        "visible_npcs": [],
+        "points_of_interest": ["Home gate", "Weathered way-sign toward The Square"],
     },
 
     # ── THE SQUARE ────────────────────────────────────────────────────────────
@@ -52,6 +54,8 @@ TOWN_NODES: dict[str, dict] = {
             "water station": "A communal cistern. Clean and managed. People stop here on their way somewhere.",
             "vendors": "Early risers getting their stalls ready. Fruit, tools, hand-sewn things. Practical goods.",
         },
+        "visible_npcs": ["Old Guard"],
+        "points_of_interest": ["Announcement board", "Water station", "Directional sign toward Keeper's Dome"],
     },
 
     # ── THE MARKET ────────────────────────────────────────────────────────────
@@ -73,6 +77,19 @@ TOWN_NODES: dict[str, dict] = {
             ),
             "tokens": "Small pressed discs with a crest stamped on them. The local exchange medium. You don't have any.",
         },
+        "visible_npcs": ["Fruit Vendor"],
+        "points_of_interest": ["Striped awning stall", "Herbalist corner", "Token board"],
+        "shops": [
+            {
+                "name": "Striped Awning Stall",
+                "aliases": {"stall", "vendor", "fruit vendor", "awning"},
+                "description": "Fresh produce and trail snacks sorted in neat crates.",
+                "items": [
+                    {"name": "Dried Fruit Pack", "price": 4},
+                    {"name": "Clean Water Flask", "price": 3},
+                ],
+            }
+        ],
     },
 
     # ── THE COMMONS ───────────────────────────────────────────────────────────
@@ -97,6 +114,8 @@ TOWN_NODES: dict[str, dict] = {
                 "The current ones are about fence patrol assignments and a missing supply crate."
             ),
         },
+        "visible_npcs": [],
+        "points_of_interest": ["Firepit", "Notice tree", "Bench circle"],
     },
 
     # ── FOUNDATION STEPS ─────────────────────────────────────────────────────
@@ -124,6 +143,8 @@ TOWN_NODES: dict[str, dict] = {
             ),
             "courtyard": "Open, measured, uncluttered. Designed so nothing is hidden and no one can hide.",
         },
+        "visible_npcs": [],
+        "points_of_interest": ["Crest wall", "Trial courtyard"],
     },
 
     # ── THE ARCHIVE ───────────────────────────────────────────────────────────
@@ -151,6 +172,8 @@ TOWN_NODES: dict[str, dict] = {
                 "Back to their work."
             ),
         },
+        "visible_npcs": ["Archivist"],
+        "points_of_interest": ["Trail ledgers", "Disturbed notes stack"],
     },
 
     # ── THE KEEPER'S DOME ─────────────────────────────────────────────────────
@@ -183,6 +206,8 @@ TOWN_NODES: dict[str, dict] = {
                 "Old. Used. The stone around it is worn smooth from years of people standing there."
             ),
         },
+        "visible_npcs": ["Professor Bob (inside)"],
+        "points_of_interest": ["Dome door", "Attunement ring", "Route map table"],
     },
 
     # ── FENCE LINE ────────────────────────────────────────────────────────────
@@ -210,6 +235,8 @@ TOWN_NODES: dict[str, dict] = {
             ),
             "patrol path": "Worn dirt in a loop along the inside of the fence. Regular footsteps. Reliable.",
         },
+        "visible_npcs": [],
+        "points_of_interest": ["Gate log", "Patrol path"],
     },
 
     # ── MYSTIC TRAIL ENTRANCE ─────────────────────────────────────────────────
@@ -240,5 +267,7 @@ TOWN_NODES: dict[str, dict] = {
                 "Mystic Trail on one face. The other face has been deliberately scratched out."
             ),
         },
+        "visible_npcs": ["Nate (sometimes)"],
+        "points_of_interest": ["Old overlook path", "Trail marker", "Fog boundary"],
     },
 }

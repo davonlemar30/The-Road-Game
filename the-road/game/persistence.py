@@ -18,6 +18,7 @@ def save_game(state: GameState) -> str:
         "player_name": state.player_name,
         "current_location": state.current_location,
         "current_objective": state.current_objective,
+        "money": state.money,
         "inventory": state.inventory,
         "questions_asked": state.questions_asked,
         "discovered_locations": state.discovered_locations,
@@ -41,6 +42,7 @@ def load_game() -> tuple[bool, Union[GameState, str]]:
         state.player_name = data.get("player_name", "")
         state.current_location = data.get("current_location", "bedroom")
         state.current_objective = data.get("current_objective", "")
+        state.money = data.get("money", 12)
         state.inventory = data.get("inventory", [])
         state.questions_asked = data.get("questions_asked", [])
         state.discovered_locations = data.get("discovered_locations", [])

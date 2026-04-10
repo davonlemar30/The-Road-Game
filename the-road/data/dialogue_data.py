@@ -25,11 +25,11 @@ MOM_BLESSING_HINT = "(You have Mom's old phone. Head back to the Keeper's Dome w
 MOTHER_SCENE1 = [
     '"Mornin\', baby. You sleep okay?"',
     "She doesn't wait for an answer. Already moving, already managing.",
-    '"Professor Bob stopped by lookin\' for that friend of yours — Nate."',
-    '"Said he ain\'t seen him in a couple days. You heard from him?"',
+    '"Professor Bob stopped by while you were out cold. Askin\' about Nate."',
+    '"Said Nate had been in and out of the Dome, then went quiet. You heard from him?"',
     "A pause. The kettle clicks off.",
-    '"Well... maybe go poke around that lil spot y\'all always end up at. You know the one."',
-    '"Wouldn\'t hurt to stretch them legs and give that damn game a break."',
+    '"I don\'t know the whole story, but Bob might. You should go see him first."',
+    '"Then check that overlook y\'all always end up at."',
     "She looks at you properly now. A beat longer than usual.",
     '"It\'s not safe out there without an Astari, baby."',
     '"You can\'t keep leanin\' on other people forever."',
@@ -38,7 +38,7 @@ MOTHER_SCENE1 = [
 
 # Single-line hint shown once after Mom's monologue
 MOTHER_SCENE1_HINT = (
-    "(She's still here if you have questions — nate / astari / outside / bob)"
+    "(She's still here if you have questions — bob said / nate / astari / dangerous / no astrali)"
 )
 
 # Dismissal lines — after scene1 dialogue is done, repeated talks
@@ -96,29 +96,35 @@ MOM_QA: dict[str, dict] = {
     "astari": {
         "answer": [
             "She leans against the counter. This one she takes seriously.",
-            '"An Astari is... hard to explain if you haven\'t bonded with one."',
+            '"An Astrali is... hard to explain if you haven\'t bonded with one."',
             '"They\'re companions. Survival partners, really."',
             '"The world out there — the roads, the trails between towns — it\'s not built for people traveling alone anymore."',
-            '"Having an Astari changes that."',
+            '"Having an Astrali changes that."',
         ],
-        "hint": "(dig deeper: astari bond  •  astari dangerous  •  astari get)",
+        "hint": "(dig deeper: astrali bond  •  astrali dangerous  •  astrali get  •  no astrali)",
         "followups": {
-            "astari bond": [
+            "astrali bond": [
                 '"Bonding takes time. It\'s not like picking up a tool."',
                 '"You grow into it together. Some people never do it right and wonder why everything keeps going wrong."',
                 '"It\'s a commitment, not just a convenience."',
             ],
-            "astari dangerous": [
+            "astrali dangerous": [
                 '"Without one out there? You\'re exposed."',
                 '"That\'s just the truth. I\'m not saying it to scare you."',
                 '"Nate has one. Most people your age who move around have at least started."',
                 '"You\'ve waited longer than most."',
             ],
-            "astari get": [
+            "astrali get": [
                 '"Professor Bob keeps a few at the Keeper\'s Dome."',
                 '"Has for years. He\'s been asking when you were coming in to choose."',
                 '"He mentioned you specifically, more than once."',
                 'A small pause. "Maybe now\'s the time."',
+            ],
+            "no astrali": [
+                "She goes quiet.",
+                '"I had a chance once. I said no because staying felt safer."',
+                '"Some days I still think I chose right. Some days I know I didn\'t."',
+                '"I don\'t want fear making your choices for you the way it made mine."',
             ],
         },
     },
@@ -155,6 +161,26 @@ MOM_QA: dict[str, dict] = {
                 '"That\'s why you need people — and an Astari — you can trust."',
             ],
         },
+    },
+
+    "bob said": {
+        "answer": [
+            '"Not much. Just that Nate was digging into trail records and asking sharp questions."',
+            '"Then he stopped showing up."',
+            '"Bob looked worried, not annoyed. That\'s why I\'m telling you to see him first."',
+        ],
+        "hint": "(you can ask: nate trouble  •  dangerous)",
+        "followups": {},
+    },
+
+    "dangerous": {
+        "answer": [
+            '"Yes. More than folks say out loud."',
+            '"Not every danger looks like teeth. Some of it feels like bad weather in your bones."',
+            '"That\'s why I keep saying: get informed, get partnered, then move."',
+        ],
+        "hint": "",
+        "followups": {},
     },
 
     # ── FORBIDDEN TRAIL / PLAYER'S PLAN ─────────────────────────────────────

@@ -6,7 +6,7 @@ OBJECTIVES = {
     "talk_to_mom": "Talk to your mom.",
     "find_nate": "Find Nate.",
     "leave_house": "Leave the house.",
-    "find_bob": "Find Professor Bob at The Keeper's Dome.",
+    "find_bob": "Find Professor Bob at The Keeper's Dome. He has more on Nate.",
     "enter_dome": "Enter The Keeper's Dome.",
     "deliver_codex": "Deliver Nate's Codex. Find him at Mystic Trail.",
     "return_to_dome": "Return to the Keeper's Dome.",

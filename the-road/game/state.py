@@ -11,6 +11,7 @@ class GameState:
     current_location: str = "bedroom"
     running: bool = True
     current_objective: str = ""
+    money: int = 12
     inventory: list[str] = field(default_factory=list)
     questions_asked: list[str] = field(default_factory=list)
     discovered_locations: list[str] = field(default_factory=list)

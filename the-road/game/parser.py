@@ -1,8 +1,30 @@
 """Simple, extendable command parser."""
+from __future__ import annotations
+
+import re
+
+
+_FILLER_WORDS = {"to", "the", "at"}
+
+
+def _normalize_text(text: str) -> str:
+    text = text.lower().strip()
+    # Normalize curly apostrophes and strip other punctuation to spaces.
+    text = text.replace("’", "'")
+    text = re.sub(r"[^a-z0-9'\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _strip_leading_fillers(text: str) -> str:
+    parts = text.split()
+    while parts and parts[0] in _FILLER_WORDS:
+        parts.pop(0)
+    return " ".join(parts)
 
 
 def parse_command(raw: str) -> tuple:
-    text = (raw or "").strip().lower()
+    text = _normalize_text(raw or "")
     if not text:
         return "", ""
 
@@ -26,6 +48,8 @@ def parse_command(raw: str) -> tuple:
 
     elif verb in {"inventory", "inv", "i", "items"}:
         verb = "inventory"
+    elif verb in {"shop", "trade"}:
+        verb = "browse"
 
     elif verb == "l":
         verb = "look"
@@ -37,11 +61,14 @@ def parse_command(raw: str) -> tuple:
             arg = arg[3:]
         elif arg.startswith("with "):
             arg = arg[5:]
+        arg = _strip_leading_fillers(arg)
 
-    # ── "ask about X" (no explicit NPC target) → infer mom ───────────────────
-    # Covers: "ask about nate", "ask about astari", etc.
+    # ── "ask about X" (no explicit NPC target) ───────────────────────────────
+    # Keep as "about <topic>" and let engine infer a visible NPC if possible.
     if verb == "ask" and arg.startswith("about "):
-        arg = "mom " + arg[6:]
+        return "ask", arg
+    if verb == "ask":
+        arg = _strip_leading_fillers(arg)
 
     # ── "tell me about X" / "tell me X" / "tell mom X" → "ask mom X" ─────────
     # Covers: "tell me about nate", "tell mom i'm going", "tell mom plan"
@@ -62,6 +89,11 @@ def parse_command(raw: str) -> tuple:
         return "enter", arg
     if verb == "open" and arg in {"door", "the door", ""}:
         return "enter", "door"
+
+    if verb == "go":
+        if arg.startswith("to "):
+            arg = arg[3:]
+        arg = _strip_leading_fillers(arg)
 
     # ── Directional shortcuts ─────────────────────────────────────────────────
     if verb in {"n", "north"}:
