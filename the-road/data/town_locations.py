@@ -17,10 +17,10 @@ TOWN_NODES: dict[str, dict] = {
         "name": "Front Street",
         "aliases": {"front street", "front", "street", "home", "outside", "out"},
         "description": (
-            "The air out here is cooler than the house. The street is quiet this early, "
-            "but not empty — a few people moving with the particular purpose of people "
-            "who've already decided on their day. GP's House is behind you. "
-            "Iso Town spreads out ahead."
+            "The air out here is cooler than the house. The street is quiet this early — "
+            "not empty, but moving at the pace of people who've already settled into their morning. "
+            "Something about it feels held. The kind of calm that knows itself. "
+            "GP's House is behind you. Iso Town spreads out ahead."
         ),
         "neighbors": ["the_square"],
         "interactables": {
@@ -154,9 +154,9 @@ TOWN_NODES: dict[str, dict] = {
         "description": (
             "Low ceilings and natural light through narrow windows. Shelves of preserved "
             "materials — printed pages, bound notebooks, salvaged documents. "
-            "Someone has organized them obsessively. Another person has clearly been "
-            "going through a section near the back and hasn't put things away properly. "
-            "Recent, by the look of it."
+            "Someone has organized them obsessively. "
+            "Someone else has been through a section near the back recently — "
+            "notebooks pulled, a few left open, like they didn't plan on being gone long."
         ),
         "neighbors": ["the_market", "keepers_dome"],
         "interactables": {
@@ -187,9 +187,10 @@ TOWN_NODES: dict[str, dict] = {
         "description": (
             "Low, round, and set back from the path where foot traffic naturally thins. "
             "The outer wall is thick and the door is barely ajar. Something alive moves "
-            "inside — you can feel it more than hear it. The smell is old paper and "
-            "something warm that you can't name. "
-            "A ring of symbols is cut into the stone threshold."
+            "inside — you can feel it more than hear it. Not threatening. Present. "
+            "The smell is old paper and something warm you can't name. "
+            "A ring of attunement marks circles the stone threshold, worn to a shine "
+            "from years of people standing in that same spot."
         ),
         "neighbors": ["the_archive", "fence_line", "mystic_trail"],
         "interactables": {
@@ -249,7 +250,8 @@ TOWN_NODES: dict[str, dict] = {
         "description": (
             "The trail mouth opens up behind the Dome, half-sheltered by overgrowth. "
             "The path is clear for the first stretch — you can see maybe fifty yards before "
-            "it bends and the canopy thickens. The Forbidden Trail branches somewhere deeper in. "
+            "it bends and the canopy closes. The Forbidden Trail branches somewhere deeper in. "
+            "The air is different here. Not wrong. Just — aware. "
             "You can feel the difference between here and there before you've gone anywhere."
         ),
         "neighbors": ["keepers_dome"],

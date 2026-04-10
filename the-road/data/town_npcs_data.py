@@ -3,42 +3,86 @@
 TOWN_NPC_DIALOGUE: dict[str, dict] = {
     "fruit_vendor": {
         "talk": [
-            '"Morning. If you\'re looking for the Keeper, take the Square to the Market, then the Archive."',
-            '"His Dome sits just past the stacks. Hard to miss once you smell the paper and ozone."',
+            '"Early for wandering."',
+            "She stacks a crate without looking up. Something rust-colored. Efficient hands.",
+            '"You lost, or just thinking?"',
         ],
-        "hint": "(ask about: keeper  •  nate  •  market)",
+        "hint": "(ask about: keeper  •  nate  •  market  •  trail)",
         "topics": {
             "keeper": [
-                '"Keeper\'s Dome is tucked behind the Archive. Follow the painted signs near the water station."',
+                '"Bob? Through the Market, past the Archive, then you\'ll smell it before you see it."',
+                '"Old paper and something warm. Always on. He never really closes up."',
             ],
             "nate": [
-                '"Saw Nate cut through early yesterday. Looked wired. Headed toward the trail side of town."',
+                '"Came through early yesterday. Moving like something was chasing him — or like he was chasing something."',
+                '"Headed toward the back fence."',
             ],
             "market": [
-                '"Market opens fast. If you need supplies before the trail, this is your stop."',
+                '"You\'re standing in it."',
+                '"What do you need?"',
+            ],
+            "trail": [
+                '"Mystic? People go."',
+                '"Forbidden?"',
+                "A beat.",
+                '"People go there too. Not always the same ones that come back."',
             ],
         },
     },
     "old_guard": {
         "talk": [
-            '"You\'re the one Bob asked about, right? He came through here before dawn."',
-            '"If it\'s about Nate, don\'t guess. Go ask Bob directly."',
+            "He watches you for a beat before he speaks.",
+            '"Bob came through before dawn. That\'s not a man who moves early unless something needs moving."',
+            '"If you\'re headed to the Dome — yeah. That\'s probably where you should be."',
         ],
-        "hint": "(ask about: bob  •  danger)",
+        "hint": "(ask about: bob  •  nate  •  danger  •  fence)",
         "topics": {
-            "bob": ['"Archive path, then left. Dome door never really closes."'],
-            "danger": ['"Trail edge has felt wrong all week. Don\'t go alone."'],
+            "bob": [
+                '"Been in this town forty years. Seen him move early maybe three times."',
+                '"Archive path, then left. Dome door stays cracked. You\'ll know when you\'re there."',
+            ],
+            "nate": [
+                '"Nate."',
+                "A long pause. He looks at the fence line.",
+                '"Moves like he\'s got something to prove. Nothing wrong with that, till it is."',
+            ],
+            "danger": [
+                '"Trail edge has been off all week. Can\'t tell you what it is. Just feels wrong."',
+                '"The Field gets that way sometimes. Means something\'s moved that shouldn\'t have."',
+            ],
+            "fence": [
+                '"Fence has held longer than most people remember."',
+                '"Stay inside it till you know what you\'re doing on the other side."',
+            ],
         },
     },
     "archivist": {
         "talk": [
-            '"You\'re late. Bob already asked for those trail ledgers."',
-            '"If you need him, follow the corridor to the Dome before he disappears into work again."',
+            "They don't look up. Reading something, pages spread flat.",
+            '"Looking for Bob, or just browsing?"',
+            "A half-second pause.",
+            '"If it\'s Bob — Dome is through that side door. He\'s been in since early."',
         ],
-        "hint": "(ask about: bob  •  trail)",
+        "hint": "(ask about: bob  •  trail  •  nate  •  ledgers)",
         "topics": {
-            "bob": ['"Keeper\'s Dome is adjacent to the Archive. Through that side path."'],
-            "trail": ['"Mystic entries are recent. Nate\'s handwriting appears in the margins."'],
+            "bob": [
+                '"Dome\'s adjacent. That side path."',
+                '"Knock, but don\'t wait long. He doesn\'t hear things when he\'s mid-thought."',
+            ],
+            "trail": [
+                '"Mystic trail records are in the third shelf — outer east section."',
+                '"They\'ve had a lot of traffic recently. Check the margins if you want the interesting parts."',
+            ],
+            "nate": [
+                '"Someone came through and pulled three field notebooks. Left them half-open on the table."',
+                "They nod toward the disturbed section near the back.",
+                '"Didn\'t sign the log. I know his handwriting anyway."',
+            ],
+            "ledgers": [
+                '"Outer trail ledgers?"',
+                '"Back section. Someone beat you to them."',
+                '"Left notes in the margins. Might be worth reading before you decide to follow."',
+            ],
         },
     },
 }

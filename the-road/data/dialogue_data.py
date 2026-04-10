@@ -21,24 +21,27 @@ MOM_BLESSING = [
 MOM_BLESSING_HINT = "(You have Mom's old phone. Head back to the Keeper's Dome when you're ready.)"
 
 # Mom's main monologue — plays on first talk, Scene 1
-# Voice: warm, Southern-inflected, tired but loving. She checks practical things first.
+# Voice: warm, Southern-inflected, tired but loving. Present before practical.
 MOTHER_SCENE1 = [
-    '"Mornin\', baby. You sleep okay?"',
-    "She doesn't wait for an answer. Already moving, already managing.",
-    '"Professor Bob stopped by while you were out cold. Askin\' about Nate."',
-    '"Said Nate had been in and out of the Dome, then went quiet. You heard from him?"',
-    "A pause. The kettle clicks off.",
-    '"I don\'t know the whole story, but Bob might. You should go see him first."',
-    '"Then check that overlook y\'all always end up at."',
-    "She looks at you properly now. A beat longer than usual.",
-    '"It\'s not safe out there without an Astari, baby."',
-    '"You can\'t keep leanin\' on other people forever."',
-    '"Just... be careful if you go lookin\' for him, alright?"',
+    '"Mornin\', baby."',
+    "She's at the counter. A cloth in her hand. The kettle's already run — she's been up a while.",
+    '"You sleep okay?"',
+    "She doesn't wait. She already knows you did.",
+    '"Professor Bob stopped by while you were out cold. Before sunrise — you know he doesn\'t do that."',
+    '"He was asking about Nate."',
+    "She sets down the cloth and turns.",
+    '"Said Nate had been in and out of the Dome, digging through trail records, asking questions. Then just stopped coming. Took some of Bob\'s field notes when he left."',
+    '"Bob wasn\'t angry. He was worried. That\'s worse."',
+    '"You need to go see him. Today. Not whenever."',
+    "The kettle clicks off. She's quiet for a moment.",
+    '"And I mean it this time — get yourself an Astari while you\'re there."',
+    '"It\'s not just about the trail, baby. It\'s about knowing you\'re ready before you have to be."',
+    '"There\'s a difference between bein\' careful and just... staying still."',
 ]
 
 # Single-line hint shown once after Mom's monologue
 MOTHER_SCENE1_HINT = (
-    "(She's still here if you have questions — bob said / nate / astari / dangerous / no astrali)"
+    "(She's here if you have questions — bob said  •  nate  •  astari  •  dangerous  •  outside)"
 )
 
 # Dismissal lines — after scene1 dialogue is done, repeated talks
@@ -60,11 +63,11 @@ MOM_QA: dict[str, dict] = {
         "answer": [
             '"Nate?"',
             "She almost smiles. Almost.",
-            '"Baby, you know Nate better than I do."',
-            '"Y\'all been running that same trail since middle school."',
-            '"But lately he\'s been... different. Pushing into places he shouldn\'t."',
-            '"That boy has a lot of fire and not enough sense to point it anywhere safe."',
-            '"Somebody needs to go check on him before he does something he can\'t walk back."',
+            '"Baby, you know that boy better than I do."',
+            '"Y\'all been runnin\' that same trail since middle school."',
+            '"But lately he\'s been... somewhere else, even when he\'s standing right here."',
+            '"He\'s got fire. Always has. Just needs someone who can think a step ahead of it."',
+            '"Right now that might need to be you."',
         ],
         "hint": "(dig deeper: nate trail  •  nate trouble  •  nate dangerous)",
         "followups": {
@@ -95,18 +98,19 @@ MOM_QA: dict[str, dict] = {
     # ── ASTARI ───────────────────────────────────────────────────────────────
     "astari": {
         "answer": [
-            "She leans against the counter. This one she takes seriously.",
-            '"An Astrali is... hard to explain if you haven\'t bonded with one."',
-            '"They\'re companions. Survival partners, really."',
-            '"The world out there — the roads, the trails between towns — it\'s not built for people traveling alone anymore."',
-            '"Having an Astrali changes that."',
+            "She leans against the counter. Takes her time with this one.",
+            '"An Astari is... hard to explain if you haven\'t felt it yourself."',
+            '"They\'re not pets. Not tools. It\'s more like — they fill in the part of you that goes quiet under pressure."',
+            '"The world out there — the roads, the trails between towns — it\'s rougher than it used to be. Not built for people going alone."',
+            '"An Astari changes that."',
         ],
         "hint": "(dig deeper: astrali bond  •  astrali dangerous  •  astrali get  •  no astrali)",
         "followups": {
             "astrali bond": [
-                '"Bonding takes time. It\'s not like picking up a tool."',
-                '"You grow into it together. Some people never do it right and wonder why everything keeps going wrong."',
-                '"It\'s a commitment, not just a convenience."',
+                '"The bond isn\'t something that just happens."',
+                '"The Astari reads you first — your field, your intent. Decides whether there\'s something worth committing to."',
+                '"Then you grow into it together. Some people never do it right and spend years wondering why things keep slipping."',
+                '"It runs both ways. That\'s what makes it real."',
             ],
             "astrali dangerous": [
                 '"Without one out there? You\'re exposed."',
@@ -165,9 +169,12 @@ MOM_QA: dict[str, dict] = {
 
     "bob said": {
         "answer": [
-            '"Not much. Just that Nate was digging into trail records and asking sharp questions."',
-            '"Then he stopped showing up."',
-            '"Bob looked worried, not annoyed. That\'s why I\'m telling you to see him first."',
+            '"Mostly what I told you."',
+            '"Nate had been pulling field ledgers on the outer trails. Asking about the Mystic-Forbidden split. Sharp questions, Bob said."',
+            '"Then three days ago — gone. Left in the middle of something, from the look of it."',
+            '"Bob mentioned something else, too. Said the Field\'s been noisy lately."',
+            "A small pause.",
+            '"I didn\'t push him on what that meant. But he looked like a man who\'d slept on a bad feeling."',
         ],
         "hint": "(you can ask: nate trouble  •  dangerous)",
         "followups": {},

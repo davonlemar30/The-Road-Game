@@ -108,7 +108,7 @@ class GameEngine:
 
         handler = handlers.get(verb)
         if handler is None:
-            print(f"I don't understand '{verb}'. Type 'help' for options.")
+            self._handle_unknown(verb, arg)
             return
 
         handler(arg)
@@ -494,6 +494,41 @@ class GameEngine:
         else:
             print("\nYou stay in the house a little longer.")
         self.state.running = False
+
+    # ── Natural language fallback ─────────────────────────────────────────────
+
+    def _handle_unknown(self, verb: str, arg: str) -> None:
+        """
+        Called when the verb is not in the command dispatch table.
+
+        If exactly one NPC is present in the current location, treat the full
+        input as a natural-language question directed at that NPC — so the
+        player can type "What did Bob want?" or "Who is Nate?" without needing
+        the explicit "ask mom" prefix.
+
+        If zero or multiple NPCs are present, fall back to the standard error.
+        """
+        npcs_here = [
+            npc_id for npc_id, data in NPCS.items()
+            if data["location"] == self.state.current_location
+        ]
+        if len(npcs_here) == 1:
+            full_input = f"{verb} {arg}".strip()
+            self._ask_natural(npcs_here[0], full_input)
+            return
+        print(f"I don't understand '{verb}'. Type 'help' for options.")
+
+    def _ask_natural(self, npc_id: str, full_input: str) -> None:
+        """Route a free-form input to the appropriate NPC ask handler."""
+        if npc_id == "mother":
+            lines, hint = self.dialogue.ask_mom(self.state, full_input)
+        elif npc_id == "bob":
+            lines, hint = self.dialogue.ask_bob(self.state, full_input)
+        else:
+            lines, hint = self.dialogue.ask_town_npc(npc_id, full_input)
+        if lines:
+            print_dialogue(lines)
+        print_hint(hint)
 
     # ── Location events ───────────────────────────────────────────────────────
 
