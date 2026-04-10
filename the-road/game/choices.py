@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from data.choices_data import SCENE_CHOICES
-from game.display import print_dialogue
+from game.display import print_choices, print_dialogue
 
 
 def apply_choice_effects(state, effects: dict) -> None:
@@ -23,28 +23,26 @@ def run_scene_choice(state, choice_id: str) -> str | None:
     Render a formal choice prompt, gather numeric input, apply hidden effects,
     and show optional follow-up lines.
 
-    Returns selected option id, or None if choice_id is unknown.
+    Returns selected option id, or None if choice_id is unknown or already used.
+
+    Idempotent: a second call with the same choice_id is a no-op.  This means
+    engine call sites don't need to guard against double-triggers themselves.
     """
     choice = SCENE_CHOICES.get(choice_id)
     if not choice:
         return None
 
-    options = choice["options"]
-    print_dialogue([choice["prompt"]])
-    for idx, option in enumerate(options, start=1):
-        print(f"  {idx}. {option['text']}")
+    # Guard: don't re-present a choice the player has already made this session.
+    if choice_id in state.choice_history:
+        return None
 
-    selected = None
-    while selected is None:
-        raw = input("\nChoose an option number: ").strip()
-        if not raw.isdigit():
-            print("Please enter the number of your choice.")
-            continue
-        index = int(raw)
-        if index < 1 or index > len(options):
-            print(f"Enter a number between 1 and {len(options)}.")
-            continue
-        selected = options[index - 1]
+    options = choice["options"]
+    prompt_lines = choice.get("prompt_lines") or [choice.get("prompt", "")]
+    option_texts = [opt["text"] for opt in options]
+
+    # Unified display: prompt + numbered choices in one framed box.
+    idx = print_choices(prompt_lines, option_texts)
+    selected = options[idx]
 
     apply_choice_effects(state, selected.get("effects", {}))
     state.choice_history.add(choice_id)

@@ -1,12 +1,65 @@
 """Data-driven narrative choices for Scene 1."""
 
 SCENE_CHOICES = {
+    # ── Opening beat: Mom asks if you slept okay ─────────────────────────────
+    "mom_sleep_response": {
+        "prompt_lines": [
+            "She keeps working. Glances back.",
+        ],
+        "options": [
+            {
+                "id": "slept_fine",
+                "text": "Slept fine. Yeah.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["mom_sleep_fine"],
+                },
+                "response_lines": [
+                    '"Mm."',
+                ],
+            },
+            {
+                "id": "not_really",
+                "text": "Not really.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"mom": 1},
+                    "disposition": -1,
+                    "history": ["mom_sleep_restless"],
+                },
+                "response_lines": [
+                    '"Yeah."',
+                    '"Me neither."',
+                ],
+            },
+            {
+                "id": "stay_quiet",
+                "text": "[Stay quiet]",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["mom_sleep_quiet"],
+                },
+                "response_lines": [
+                    "She reads the quiet and turns back to the counter.",
+                ],
+            },
+        ],
+    },
+
+    # ── How the player responds to Mom's concern about Nate ──────────────────
     "mom_nate_response": {
-        "prompt": "How do you answer her concern about Nate?",
+        "prompt_lines": [
+            "She's watching you now.",
+            "Not pressing. Just waiting to see what you do with what she said.",
+        ],
         "options": [
             {
                 "id": "dependable",
-                "text": "I'll check on him. If he's in trouble, I won't ignore it.",
+                "text": "He's not someone I'd leave hanging. I'll go find him.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 1},
@@ -14,27 +67,27 @@ SCENE_CHOICES = {
                     "history": ["mom_nate_dependable"],
                 },
                 "response_lines": [
-                    "She nods once. Relief flickers across her face before she tucks it away.",
+                    "She nods once. Something in her face settles.",
                     '"Thank you. That matters."',
                 ],
             },
             {
                 "id": "dismissive",
-                "text": "Nate can handle himself. I don't need to chase him.",
+                "text": "Nate's not fragile. He'll surface when he's ready.",
                 "effects": {
                     "reputation": -1,
                     "relationships": {"mom": -1},
-                    "disposition": 1,
+                    "disposition": 0,
                     "history": ["mom_nate_dismissive"],
                 },
                 "response_lines": [
-                    "Her mouth tightens, not angry — just disappointed.",
-                    '"Maybe. But "can" and "should" are different things."',
+                    "Her mouth tightens, not angry — just noting it.",
+                    '"Maybe. But \'can\' and \'should\' aren\'t the same word."',
                 ],
             },
             {
                 "id": "investigative",
-                "text": "What exactly did Bob see? I need context before I move.",
+                "text": "What did Bob tell you? I want to know what I'm walking into.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 0},
@@ -49,11 +102,13 @@ SCENE_CHOICES = {
         ],
     },
     "mom_readiness_response": {
-        "prompt": "Her words hang there. How do you answer?",
+        "prompt_lines": [
+            "She's not pressing it. Just letting it sit there between you.",
+        ],
         "options": [
             {
                 "id": "receptive",
-                "text": "I hear you. I'll stop waiting around and start moving.",
+                "text": "You're right. I've been holding still long enough.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 1},
@@ -67,7 +122,7 @@ SCENE_CHOICES = {
             },
             {
                 "id": "hesitant_honest",
-                "text": "I'm not fully ready yet, but I'm not pretending anymore.",
+                "text": "I know I'm not ready. But I'm done pretending I am.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 1},
@@ -80,27 +135,30 @@ SCENE_CHOICES = {
                 ],
             },
             {
-                "id": "defensive",
-                "text": "Everyone keeps pushing me. I'll move when I'm ready.",
+                "id": "not_there_yet",
+                "text": "I hear you. I'm just not there yet.",
                 "effects": {
                     "reputation": 0,
                     "relationships": {"mom": -1},
-                    "disposition": 1,
+                    "disposition": 0,
                     "history": ["mom_readiness_defensive"],
                 },
                 "response_lines": [
-                    "She looks at you for a long moment, then exhales.",
-                    '"Then don\'t confuse delay with a decision."',
+                    "She gives a small nod. Not satisfied — just accepting.",
+                    '"When you are, you\'ll know it."',
                 ],
             },
         ],
     },
     "bob_codex_response": {
-        "prompt": "Bob sets Nate's Codex in your hands. What do you say?",
+        "prompt_lines": [
+            "The Codex is in your hands now.",
+            "Bob is watching to see how you hold it.",
+        ],
         "options": [
             {
                 "id": "accept_cleanly",
-                "text": "Understood. I'll get this to Nate right now.",
+                "text": "I've got it. I'll head out now.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"bob": 1},
@@ -113,7 +171,7 @@ SCENE_CHOICES = {
             },
             {
                 "id": "ask_urgency",
-                "text": "Why is this urgent? What changed out there?",
+                "text": "What happened out there? I want to understand before I go.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"bob": 0},
@@ -126,11 +184,11 @@ SCENE_CHOICES = {
             },
             {
                 "id": "why_me",
-                "text": "Why me? You've got people with more trail hours.",
+                "text": "Why not someone with more experience on the Trail?",
                 "effects": {
                     "reputation": 0,
                     "relationships": {"bob": -1},
-                    "disposition": 1,
+                    "disposition": 0,
                     "history": ["bob_codex_why_me"],
                 },
                 "response_lines": [

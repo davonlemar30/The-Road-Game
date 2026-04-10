@@ -1,8 +1,11 @@
 """Main game engine and command loop."""
 
+from __future__ import annotations
+
+from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
-from game.dialogue import DialogueManager
 from game.choices import run_scene_choice
+from game.dialogue import DialogueManager
 from game.display import print_dialogue, print_hint
 from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
@@ -220,40 +223,50 @@ class GameEngine:
                 self.state.flags["codex_given"] = True
                 if "Nate's Codex Parcel" not in self.state.inventory:
                     self.state.inventory.append("Nate's Codex Parcel")
-                print("\nThe door opens the rest of the way and Bob waves you in.")
-                print("Audri is already by the equipment table, speaking quietly with him.")
-                print("She glances at you once — measuring, unreadable — then returns to the route map.")
-                print()
-                print('Bob rubs his forehead. "Good timing. I need a favor."')
-                print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
-                print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+                print_dialogue([
+                    "The door opens the rest of the way. Bob waves you in without looking up.",
+                    "Audri is at the equipment table. She glances at you once — measuring, unreadable — then turns back to whatever she's doing.",
+                    'Bob sets something down and faces you. "Good. I was hoping you\'d come in."',
+                    '"Nate\'s been out on the Mystic stretch without his field guide. Three days with no word."',
+                    '"This is his Codex." He presses a carefully wrapped parcel into your hands. "It keeps you honest when the Trail starts lying. He needs it."',
+                    '"Get it to him. He\'ll be at the overlook if he\'s anywhere. Come back after."',
+                    "He holds your eye a beat longer than comfortable.",
+                    '"We still have your attunement to finish. That\'s not a someday conversation."',
+                ])
                 run_scene_choice(self.state, "bob_codex_response")
                 print(self.objectives.set_objective(self.state, "deliver_codex"))
-                print("\n(Type 'go mystic trail' to look for Nate.)")
+                print("\nType 'go mystic trail' to head out.")
                 return
 
             # Post-delivery: Bob sends GP home for Scene 4 conversation
             if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
                 self.state.flags["mom_blessing_available"] = True
-                print("\nBob checks your face before he checks your hands.")
-                print('"Good. You found Nate." He nods toward the town. "Now go talk to your mom."')
-                print('"No half-steps. Come back after that conversation and we\'ll continue."')
+                print_dialogue([
+                    "Bob checks your face before he checks your hands.",
+                    '"You found him."',
+                    "Not a question.",
+                    '"Good. Now go talk to your mom. Not tonight — now. Tell her where you\'re going and mean it."',
+                    '"She already suspects. Don\'t let her sit with that."',
+                    '"Come back after and we finish this."',
+                ])
                 print(self.objectives.set_objective(self.state, "mom_blessing"))
                 return
 
             # Scene 4+ follow-up
-            print("\nThe door is open. You step inside.")
-            print("─" * 40)
-            print("Professor Bob is at his workbench, back to you.")
             if self.state.flags["told_mom_plans"]:
-                print("An Astari — small, watchful — sits on a perch near the window.")
-                print("Bob doesn't look up immediately.")
-                print('  "Pick the one that picks you. That\'s always been my advice."')
-                print('  "The other one already knows you\'re here."')
-                print("(Starter selection is still in progress.)")
+                print_dialogue([
+                    "Professor Bob is at his workbench, back to you.",
+                    "An Astari — small, watchful — sits on a perch near the window.",
+                    "It turns its head before Bob does.",
+                    '"Pick the one that picks you. That\'s always been my advice."',
+                    '"The other one already knows you\'re here."',
+                ])
+                print("(Astari selection coming in the next build.)")
             else:
-                print('Bob says, "When you\'ve had that talk at home, come back."')
-            print("─" * 40)
+                print_dialogue([
+                    "Bob looks up when you come in.",
+                    '"When you\'ve had that talk at home, come back. Not before."',
+                ])
             return
 
         # Generic response for other locations
@@ -282,13 +295,28 @@ class GameEngine:
         if npc_id == "mother":
             was_talked = self.state.flags["mom_talked"]
             lines, hint = self.dialogue.talk_to_mother(self.state)
+
             if not was_talked and self.state.flags["mom_talked"]:
-                print_dialogue(lines)
+                # ── First encounter: full split-scene flow ────────────────────
+                # Part 1: greeting + "You sleep okay?"
+                print_dialogue(MOTHER_SCENE1_PART1)
+                # Player responds to the question — first interactive beat.
+                run_scene_choice(self.state, "mom_sleep_response")
+                # Part 2: Bob's visit, Nate news, Astari push.
+                print_dialogue(MOTHER_SCENE1_PART2)
+                # Nate stance and readiness stance choices.
                 run_scene_choice(self.state, "mom_nate_response")
                 run_scene_choice(self.state, "mom_readiness_response")
-                print_hint(hint)
+                print_hint("She's here if there's more on your mind.")
                 print(self.objectives.set_objective(self.state, "find_bob", added=True))
                 return
+
+            # ── Subsequent visits ─────────────────────────────────────────────
+            if lines:
+                print_dialogue(lines)
+            print_hint(hint)
+            return
+
         elif npc_id == "bob":
             lines, hint = self.dialogue.talk_to_bob(self.state)
         else:
@@ -596,12 +624,11 @@ class GameEngine:
 
     def _scene2_hook(self) -> None:
         """Scene 2 intro event when player first arrives at The Keeper's Dome."""
-        print("\n" + "─" * 40)
-        print("The Dome is low and round, set back from everything else.")
-        print("The door is barely open. Voices carry from inside — Bob's, and someone unfamiliar.")
-        print()
-        print("You catch a glimpse of Audri by the equipment table before she disappears deeper in.")
-        print('Bob calls out, "Come in. I\'ve got something for Nate."')
-        print("─" * 40)
+        print_dialogue([
+            "The Keeper's Dome is low and round, set back from everything else on the street.",
+            "The door is ajar. Voices carry from inside — Bob's low and deliberate, and someone else you don't recognize.",
+            "You catch a glimpse of movement through the gap. A woman disappears deeper into the room.",
+            '"Come on in." Bob\'s voice, from somewhere inside. "I\'ve got something that can\'t wait."',
+        ])
         print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
-        print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")
+        print("\nType 'enter' to step inside.")
