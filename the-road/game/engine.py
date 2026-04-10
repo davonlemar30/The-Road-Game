@@ -2,6 +2,7 @@
 
 from data.npcs import NPCS
 from game.dialogue import DialogueManager
+from game.choices import run_scene_choice
 from game.display import print_dialogue, print_hint
 from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
@@ -226,6 +227,7 @@ class GameEngine:
                 print('Bob rubs his forehead. "Good timing. I need a favor."')
                 print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
                 print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+                run_scene_choice(self.state, "bob_codex_response")
                 print(self.objectives.set_objective(self.state, "deliver_codex"))
                 print("\n(Type 'go mystic trail' to look for Nate.)")
                 return
@@ -282,6 +284,8 @@ class GameEngine:
             lines, hint = self.dialogue.talk_to_mother(self.state)
             if not was_talked and self.state.flags["mom_talked"]:
                 print_dialogue(lines)
+                run_scene_choice(self.state, "mom_nate_response")
+                run_scene_choice(self.state, "mom_readiness_response")
                 print_hint(hint)
                 print(self.objectives.set_objective(self.state, "find_bob", added=True))
                 return
