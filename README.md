@@ -1,160 +1,185 @@
 # The Road
 
-A terminal-based narrative RPG focused on survival, choice, and connection in a collapsing world.
+**Alpha Build:** `v0.3.2-alpha.3`
+**Codename:** `alpha-intro-pass-01`
+
+A terminal-based narrative RPG about choice, connection, and quiet transformation at the edge of a changing world.
 
 ---
 
-## 🧭 Overview
+## Overview
 
-**The Road** is a text-based, story-driven RPG where players explore a grounded, emotional journey through a post-collapse world. The experience blends:
+**The Road** is a story-driven terminal RPG focused on exploration, conversation, and emotional progression. It blends authored narrative beats with player input in a text-first interface designed to feel intimate, readable, and reactive.
 
-- Narrative exploration
-- Player-driven dialogue
-- Light survival mechanics
-- Emerging systems (Astari, bonding, traits)
+This build contains an **Act 1 intro vertical slice** that covers:
+- Waking at GP’s house
+- Talking with Mom
+- Stepping into Iso Town
+- Finding Professor Bob at the Keeper’s Dome
+- Delivering Nate’s Codex parcel to Mystic Trail
+- Returning to continue Act 1 progression
 
-The game is designed as an **open-ended terminal experience**, where player input and interpretation shape progression.
-
----
-
-## 🎮 Current State (Phase 1 – Scene One)
-
-The current build represents a **playable vertical slice** of Scene One.
-
-### Features
-
-- ✅ Player naming + intro flow
-- ✅ Exploration-based navigation
-- ✅ Intentional `look` system (no auto-description)
-- ✅ Dynamic objective tracking
-- ✅ Fully implemented Mom interaction system:
-  - Narrative dialogue
-  - Topic-based questioning (`ask mom ...`)
-  - Flexible input parsing
-- ✅ Dialogue UI system:
-  - Distinct formatting for NPC vs system text
-  - Controlled pacing for readability
-- ✅ Save / Load system (JSON-based)
-- ✅ Clean progression gating (permission to leave)
+Long-term, the project will expand into Astari bonding, combat, survival pressure, hidden narrative state, and deeper route-based progression. For now, the focus is on making the opening strong, coherent, and replayable.
 
 ---
 
-## 🧠 Core Design Philosophy
+## Current Build
 
-The Road is built on three pillars:
+This is the most complete version of the **Act 1 intro vertical slice** so far.
 
-### 1. Player Intent > UI Prompts
-The system favors natural input over rigid menus:# The Road
+### Included
 
-A terminal-based narrative RPG focused on survival, choice, and connection in a collapsing world.
-
----
-
-## 🧭 Overview
-
-**The Road** is a text-based, story-driven RPG where players explore a grounded, emotional journey through a post-collapse world. The experience blends:
-
-- Narrative exploration
-- Player-driven dialogue
-- Light survival mechanics
-- Emerging systems (Astari, bonding, traits)
-
-The game is designed as an **open-ended terminal experience**, where player input and interpretation shape progression.
-
----
-
-## 🎮 Current State (Phase 1 – Scene One)
-
-The current build represents a **playable vertical slice** of Scene One.
-
-### Features
-
-- ✅ Player naming + intro flow
-- ✅ Exploration-based navigation
-- ✅ Intentional `look` system (no auto-description)
-- ✅ Dynamic objective tracking
-- ✅ Fully implemented Mom interaction system:
-  - Narrative dialogue
-  - Topic-based questioning (`ask mom ...`)
-  - Flexible input parsing
-- ✅ Dialogue UI system:
-  - Distinct formatting for NPC vs system text
-  - Controlled pacing for readability
-- ✅ Save / Load system (JSON-based)
-- ✅ Clean progression gating (permission to leave)
+- Player naming and intro flow
+- Save/load support with compatibility-safe state merging
+- House exploration with intentional `look` / `inspect` play
+- GP’s bedroom and house interactables
+- Objective tracking and scene gating
+- Iso Town navigation across multiple connected locations
+- Fog-of-war style location discovery tracking
+- Phone unlock and map access flow
+- Keeper’s Dome / Mystic Trail codex-delivery loop
+- Framed dialogue UI with paginated text
+- Stationary dialogue box rendering in supported terminals
+- Guided multiple-choice moments in key Mom/Bob scenes
+- Parser-backed follow-up questions where reliable
+- Early hidden narrative-state support:
+  - reputation
+  - disposition
+  - relationship memory
+  - choice history
+- Basic town NPC interactions and guidance
+- Minimal shop/economy shell
 
 ---
 
-## 🧠 Core Design Philosophy
+## What This Build Focuses On
 
-The Road is built on three pillars:
+This alpha centers on three priorities:
 
-### 1. Player Intent > UI Prompts
-The system favors natural input over rigid menus:
-ask mom nate
-ask about astari
-tell me about the outside
+### 1. Conversation Feel
+The intro leans into curated dialogue during emotionally important scenes (especially with Mom and Bob). The goal is for major beats to feel authored and coherent, not mechanically brittle.
 
----
+### 2. A Stronger Opening Flow
+The playable slice now carries the player from home, through town, to Bob, to Nate, and back again with clearer objectives and stronger scene gating.
 
-### 2. Narrative First
-Every system supports the story — not the other way around.
-
-Dialogue, environment, and progression are all designed to feel:
-- grounded
-- emotional
-- intentional
+### 3. Better Terminal UX
+Dialogue presentation is more distinct from system text, and the intro is easier to test and replay.
 
 ---
 
-### 3. Modular Systems
-The architecture is designed to scale without rewrites:
+## Core Design Philosophy
 
-- Engine logic separated from content
-- Dialogue, locations, and objectives are data-driven
-- Systems like combat, survival, and Astari can be layered in later
+### Narrative First
+Systems exist to support tone, characters, and story progression.
+
+### Text With Presence
+The game is terminal-based, but the interface is treated as part of the experience. Dialogue framing, pacing, and navigation are designed to feel intentional.
+
+### Curated Where It Matters
+The game uses a hybrid approach:
+- explicit choices for emotional or story-driving moments
+- parser/free-form input where exploration and curiosity make sense
+
+### Modular Systems
+Content and systems are built to scale:
+- data-driven dialogue and objectives
+- expandable state model
+- modular content files
+- room to layer in combat, survival, and Astari systems later
 
 ---
 
-## 🕹️ Controls
+## Running the Game
 
-### Movement
-go north / south / east / west
+### Standard
+```bash
+python the-road/main.py
 
-### Exploration
+
+Quick Start
+./play.sh
+
+
+play.sh is included as a simple launcher to make repeated testing easier.
+
+
+Controls
+
+
+Movement
+go north
+go south
+go east
+go west
+go out
+enter
+
+
+Exploration
 look
 inspect [object]
+where
+map
 
-### Dialogue
+
+Conversation
 talk mom
+talk bob
 ask mom nate
-ask about astari
-tell me about bob
+ask mom astari
+ask bob codex
+ask bob trail
 
-### System
+
+System
 inventory
+objective
 save
 load
 help
 quit
 
----
 
-## 💾 Save System
+Conversation Model
 
-- Saves are stored locally in:
+
+The current build uses a hybrid conversation structure.
+
+
+
+Guided Choices
+Major emotional or story-significant moments use explicit choices. This is currently strongest in the opening Mom/Bob scenes.
+
+
+
+Parser Follow-Ups
+When the game can support it reliably, the player can still ask follow-up questions using commands like:
+
+ask mom nate
+ask mom bob said
+ask bob trail
+ask bob astari
+
+
+The parser is still evolving. In this build, reliability is favored over breadth.
+
+
+
+Save System
+
+
+Saves are stored locally at:
+
 saves/save.json
 
-- The game will prompt to load an existing save on startup.
 
----
+On startup, the game detects an existing save and prompts the player to load it. Save data is designed to merge older saves safely with newer state fields when possible.
 
-## 🧪 Running the Game
 
-```bash
-python the-road/main.py
 
-🧱 Project Structure
+Project Structure
+
+
 the-road/
 ├── main.py
 ├── game/
@@ -164,32 +189,89 @@ the-road/
 │   ├── dialogue.py
 │   ├── display.py
 │   ├── persistence.py
+│   ├── town.py
+│   ├── map_renderer.py
+│   └── choices.py
 ├── data/
 │   ├── locations.py
 │   ├── dialogue_data.py
+│   ├── choices_data.py
 │   ├── objectives_data.py
 │   ├── npcs.py
+│   ├── town_locations.py
+│   └── town_npcs_data.py
+├── saves/
+└── play.sh
 
-🔮 Next Steps
-Planned expansions:
-Scene 2: Professor Bob + Lab
-Scene 3: Nate + Mystic Trail
-Scene 4: Running shoes + deeper progression
-Inventory improvements (descriptions, use effects)
-Expanded NPC system (multi-character interaction)
-Combat + survival systems
-Astari bonding system
 
-⚠️ Notes
-This project is in active development
-Systems are intentionally minimal but scalable
-Focus is currently on solidifying core experience before expansion
+Current Playable Slice
 
-🧑‍💻 Author
+
+The current vertical slice roughly covers:
+
+GP wakes up at home
+The player explores the house
+A conversation with Mom establishes Nate / Bob / Astari pressure
+The player leaves for Iso Town
+Town navigation opens
+The player reaches the Keeper’s Dome
+Bob sets the codex handoff in motion
+The player reaches Mystic Trail and delivers the parcel
+The player returns to continue progression toward the next scene gate
+
+
+Not Implemented Yet
+
+
+Planned, but not fully built:
+
+starter selection as a full playable system
+dedicated battle loop
+Astari combat actions and move resolution
+capture resolution in gameplay
+bond progression systems in active play
+survival pressures
+deeper Bob conversation pass
+broader natural-language conversation handling
+richer inventory and item use
+expanded town/world content beyond the current slice
+
+
+Next Planned Focus
+
+
+Bob Conversation Pass
+unify talk bob and enter scene flow
+strengthen Bob’s narrative weight
+improve attunement / codex / Nate framing
+keep the opening feeling authored and cohesive
+
+
+Status
+
+
+This project is in active alpha development. The current priority is quality of the opening experience, including:
+
+cleaner conversation
+stronger scene flow
+tighter UX
+better foundations for future systems
+
+
+Author
+
+
 Davon Gass
 
-🛣️ Vision
-The goal of The Road is to create a deep, evolving text-based RPG where:
-choices matter
-systems emerge over time
-and the player’s journey feels personal and grounded
+
+
+Vision
+
+
+The Road aims to become a deep terminal RPG where:
+
+the player’s choices carry emotional weight
+systems emerge gradually instead of all at once
+the story feels personal, grounded, and strange in the right ways
+the interface stays simple, while the experience grows rich
+
