@@ -254,10 +254,6 @@ class GameEngine:
             print("─" * 40)
             return
 
-        if loc == "the_market":
-            print("You drift along the stalls. Try 'browse' to check what vendors have.")
-            return
-
         # Generic response for other locations
         print("There's no door to enter here.")
 
@@ -554,10 +550,7 @@ class GameEngine:
 
         if self.state.flags["has_old_phone"]:
             print("\n(The phone is off. Type 'use phone' to turn it on.)")
-        if not self.state.flags["codex_given"]:
-            print(self.objectives.set_objective(self.state, "find_bob", added=True))
-        else:
-            print(self.objectives.set_objective(self.state, "find_nate", added=True))
+        print(self.objectives.set_objective(self.state, "find_nate", added=True))
         print("\nType 'look' to take in Front Street.")
 
     # ── Scene 2 hook ─────────────────────────────────────────────────────────

@@ -43,24 +43,18 @@ def _paginate(rows: list[str], page_size: int = _PAGE_LINES) -> list[list[str]]:
 
 def _render_box(rows: list[str], has_next: bool) -> None:
     """Render one dialogue page inside an ASCII frame."""
-    print("\n".join(_box_lines(rows, has_next)))
-
-
-def _box_lines(rows: list[str], has_next: bool) -> list[str]:
-    """Build one framed page as plain text lines."""
-    lines = ["┌" + "─" * (_BOX_WIDTH - 2) + "┐"]
+    print("┌" + "─" * (_BOX_WIDTH - 2) + "┐")
     for row in rows:
-        lines.append(f"│ {row:<{_CONTENT_WIDTH}} │")
+        print(f"│ {row:<{_CONTENT_WIDTH}} │")
 
     # Keep a stable box height so the screen doesn't jump.
     for _ in range(max(0, _PAGE_LINES - len(rows))):
-        lines.append(f"│ {'':<{_CONTENT_WIDTH}} │")
+        print(f"│ {'':<{_CONTENT_WIDTH}} │")
 
     marker = "▼" if has_next else "■"
     footer = f"{marker} Enter"
-    lines.append(f"│ {footer:<{_CONTENT_WIDTH}} │")
-    lines.append("└" + "─" * (_BOX_WIDTH - 2) + "┘")
-    return lines
+    print(f"│ {footer:<{_CONTENT_WIDTH}} │")
+    print("└" + "─" * (_BOX_WIDTH - 2) + "┘")
 
 
 def _wait_for_continue(has_next: bool) -> None:
@@ -97,16 +91,9 @@ def print_dialogue(lines: list) -> None:
         visual_rows.extend(_wrap_for_box(line))
 
     pages = _paginate(visual_rows)
-    interactive = sys.stdin.isatty()
-    rendered_lines = 0
     for idx, page in enumerate(pages):
         has_next = idx < len(pages) - 1
-        if interactive and rendered_lines:
-            # Keep a stationary text box: move cursor up and redraw in place.
-            print(f"\x1b[{rendered_lines}A", end="")
-        box = _box_lines(page, has_next)
-        rendered_lines = len(box)
-        print("\n".join(box))
+        _render_box(page, has_next)
         _wait_for_continue(has_next)
 
     for text in passthrough_lines:

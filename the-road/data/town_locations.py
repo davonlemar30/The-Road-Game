@@ -182,7 +182,7 @@ TOWN_NODES: dict[str, dict] = {
         "name": "The Keeper's Dome",
         "aliases": {
             "keepers dome", "keeper's dome", "the dome", "dome", "bob",
-            "keeper", "bobs place", "bob's place", "the keepers dome",
+            "keeper",
         },
         "description": (
             "Low, round, and set back from the path where foot traffic naturally thins. "
