@@ -11,14 +11,14 @@ MOM_BLESSING = [
     '"You can\'t go into the Forbidden Trail without one. Not safely."',
     "She disappears into the kitchen. Comes back with an old phone in her hand.",
     "Screen scratched. Worn at the corners.",
-    '"Take this. It\'s got a map of Iso Town and some of Bob\'s notes on it."',
+    '"Take this. It\'s got a map of Iso Town and some of Bob\'s field notes on it."',
     '"Passphrase on the notes is locked — Bob\'ll give you the code when you pick up your Astari."',
     '"Check in when you can."',
     "A beat. She doesn't say anything else.",
     '"Go."',
 ]
 
-MOM_BLESSING_HINT = "(You have Mom's old phone. Type 'go south' to head to the front door.)"
+MOM_BLESSING_HINT = "(You have Mom's old phone. Head back to the Keeper's Dome when you're ready.)"
 
 # Mom's main monologue — plays on first talk, Scene 1
 # Voice: warm, Southern-inflected, tired but loving. She checks practical things first.

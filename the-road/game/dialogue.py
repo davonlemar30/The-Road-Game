@@ -69,6 +69,15 @@ class DialogueManager:
         topic = _strip_topic_fillers(topic.strip().lower())
 
         # ── Blessing trigger: player commits to going ─────────────────────────
+        if topic in _PLAN_TOPICS and not state.flags["mom_blessing_available"]:
+            return (
+                [
+                    "She studies you for a moment.",
+                    '"If this is about leaving, talk to Bob first. Then come back and tell me."',
+                ],
+                "",
+            )
+
         if topic in _PLAN_TOPICS and not state.flags["told_mom_plans"]:
             state.flags["told_mom_plans"] = True
             state.flags["permission_granted"] = True
