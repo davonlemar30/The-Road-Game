@@ -1,60 +1,104 @@
 """
 Terminal display utilities for The Road.
 
-Separates NPC dialogue from system text both visually and in pacing.
+Separates NPC dialogue from system text with a framed, paginated dialogue box.
 
 Design decisions:
-  - Speech lines (contain quotes) get a short pause before printing so
-    the eye has time to settle between lines.  No per-character output —
-    that gets annoying fast in a real session.
-  - Stage-direction / narration lines get a shorter pause.
-  - System/hint text is printed instantly via print_hint(); no indentation.
-  - A blank line is added before and after every dialogue block so it
-    never runs flush against the prompt or system messages.
+  - Dialogue is shown in a fixed-width frame (Phase 2).
+  - Content is paginated into small chunks and advances on Enter (Phase 1).
+  - In non-interactive mode (stdin not a TTY), dialogue auto-advances so
+    scripted tests do not hang.
+  - System/hint lines still print outside the frame.
 """
 
-import time
+from __future__ import annotations
 
-_SPEECH_PAUSE: float = 0.13    # seconds before each quoted speech line
-_NARRATION_PAUSE: float = 0.05  # seconds before each narration line
+import sys
+import textwrap
+
+_BOX_WIDTH: int = 78
+_CONTENT_WIDTH: int = _BOX_WIDTH - 4
+_PAGE_LINES: int = 3
+_CONTINUE_PROMPT: str = "  ▶ Press Enter to continue..."
 
 
-def _is_speech(line: str) -> bool:
-    """True for lines that contain quotation marks (NPC actual speech)."""
-    return '"' in line
+def _wrap_for_box(line: str) -> list[str]:
+    """Wrap one script line into visual box rows."""
+    if not line.strip():
+        return [""]
+    return textwrap.wrap(
+        line.strip(),
+        width=_CONTENT_WIDTH,
+        replace_whitespace=True,
+        drop_whitespace=True,
+    )
+
+
+def _paginate(rows: list[str], page_size: int = _PAGE_LINES) -> list[list[str]]:
+    """Split visual rows into page chunks."""
+    if not rows:
+        return [[]]
+    return [rows[i:i + page_size] for i in range(0, len(rows), page_size)]
+
+
+def _render_box(rows: list[str], has_next: bool) -> None:
+    """Render one dialogue page inside an ASCII frame."""
+    print("┌" + "─" * (_BOX_WIDTH - 2) + "┐")
+    for row in rows:
+        print(f"│ {row:<{_CONTENT_WIDTH}} │")
+
+    # Keep a stable box height so the screen doesn't jump.
+    for _ in range(max(0, _PAGE_LINES - len(rows))):
+        print(f"│ {'':<{_CONTENT_WIDTH}} │")
+
+    marker = "▼" if has_next else "■"
+    footer = f"{marker} Enter"
+    print(f"│ {footer:<{_CONTENT_WIDTH}} │")
+    print("└" + "─" * (_BOX_WIDTH - 2) + "┘")
+
+
+def _wait_for_continue(has_next: bool) -> None:
+    """Pause until player confirms continuation (TTY only)."""
+    if not has_next:
+        return
+    if not sys.stdin.isatty():
+        return
+    input(_CONTINUE_PROMPT)
 
 
 def print_dialogue(lines: list) -> None:
     """
-    Print a block of NPC lines with visual indentation and pacing.
+    Print a block of NPC lines in a paginated dialogue frame.
 
-    Quoted speech lines are indented two spaces and preceded by a short
-    pause.  Narration / stage-direction lines get the same indent but a
-    briefer pause.  Blank or hint-style lines (starting with '(' or a
-    newline) are passed through without indentation or delay.
+    Hint/meta lines (starting with "(" or "\n") are printed after the
+    dialogue box, unchanged.
     """
-    print()  # leading breath before dialogue
+    print()
+    passthrough_lines: list[str] = []
+    visual_rows: list[str] = []
+
     for line in lines:
         stripped = line.strip()
 
         if not stripped:
-            # Preserve intentional blank lines in a sequence
-            print()
+            visual_rows.append("")
             continue
 
         if stripped.startswith("(") or stripped.startswith("\n"):
-            # Hint / meta text — no pacing, no indent
-            print(line)
+            passthrough_lines.append(line)
             continue
 
-        if _is_speech(line):
-            time.sleep(_SPEECH_PAUSE)
-            print(f"  {line}")
-        else:
-            time.sleep(_NARRATION_PAUSE)
-            print(f"  {line}")
+        visual_rows.extend(_wrap_for_box(line))
 
-    print()  # trailing breath after dialogue
+    pages = _paginate(visual_rows)
+    for idx, page in enumerate(pages):
+        has_next = idx < len(pages) - 1
+        _render_box(page, has_next)
+        _wait_for_continue(has_next)
+
+    for text in passthrough_lines:
+        print(text)
+    print()
 
 
 def print_hint(text: str) -> None:
