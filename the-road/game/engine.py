@@ -6,6 +6,7 @@ from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
 from game.choices import run_scene_choice
 from game.dialogue import DialogueManager
+from game.dialogue_session import Beat, DialogueSession
 from game.display import (
     menu_choice,
     print_dialogue,
@@ -258,53 +259,65 @@ class GameEngine:
                 if "Nate's Codex Parcel" not in self.state.inventory:
                     self.state.inventory.append("Nate's Codex Parcel")
 
-                # ── Audri departure beat ──────────────────────────────────────
-                # The room smells like ozone and old wood. Keeper Bob is at the
-                # main worktable. A young woman stands near the far side.
-                print_dialogue([
-                    "The space inside the Dome smells like ozone, dried herbs, and old wood.",
-                    "Keeper Bob is at the worktable, hands busy. He doesn't look up yet.",
-                    "A young woman stands near the far side of the table.",
-                    "She doesn't fill the room with noise. But the room feels different with her in it.",
-                    'Bob\'s voice, steady: "All five Crests. You\'ve done this town proud."',
-                    "The young woman nods once.",
-                    '"I\'m staying in Iso Town for a bit," she says. "Rest. Prep. Then I\'m back on the road."',
-                    'Bob: "The road doesn\'t wait."',
-                    '"Neither do I."',
-                ])
-                print_dialogue([
-                    "She turns to leave.",
-                    "As she passes the threshold, she pauses.",
-                    "Her eyes find yours — warm, curious. Just for a second.",
-                    "Then she's gone, the door easing shut behind her.",
-                    "The Dome feels too quiet. Like the air is deciding what to do now that she isn't in it.",
-                ])
-
-                # ── Keeper Bob + Codex ────────────────────────────────────────
-                print_dialogue([
-                    f'Keeper Bob finally turns to you. "Good timing," he says.',
-                    '"I need a favor."',
-                    "He reaches into the tray labeled PENDING and pulls out a small parcel.",
-                    '"This keeps ending up right back where it started," he mutters.',
-                    '"I\'ve been trying to get it to Nate for over a week."',
-                    "He taps the tag with one finger.",
-                    '"His Codex."',
-                    "He watches your face, like he's waiting for you to object.",
-                    '"You know that spot you two used to hang at? The overlook above the lake, on Mystic Trail?"',
-                    '"Nate went out there last night and hasn\'t come back."',
-                    "He holds the parcel out.",
-                    '"Take it to him."',
-                ])
-                print_dialogue([
-                    '"Be careful with it. Useful, but delicate."',
-                    "His voice softens slightly. Not sentiment — patience.",
-                    '"And... yeah. I\'ve got a second Codex back here."',
-                    '"Just saying."',
-                    "He doesn't push you toward it. He just lets that truth sit in the room.",
-                    '"Mystic Trail is usually fine, but lately the path\'s been feeling off."',
-                    '"So be careful."',
-                ])
-                run_scene_choice(self.state, "bob_codex_response")
+                # ── Dialogue Mode: three-beat Bob session ─────────────────────
+                # Beat 1: Audri exit → Bob opener → "Who was that?" choice
+                # Beat 2: Codex explanation (pulls parcel, explains situation)
+                # Beat 3: Closing context + Codex handoff choice
+                player = self.state.player_name or "you"
+                session = DialogueSession(
+                    npc_name="Keeper Bob",
+                    beats=[
+                        Beat(
+                            lines=[
+                                "The space inside the Dome smells like ozone, dried herbs, and old wood.",
+                                "Keeper Bob is at the worktable, hands busy. He doesn't look up yet.",
+                                "A young woman stands near the far side of the table.",
+                                "She doesn't fill the room with noise. But the room feels different with her in it.",
+                                'Bob\'s voice, steady: "All five Crests. You\'ve done this town proud."',
+                                "The young woman nods once.",
+                                '"I\'m staying in Iso Town for a bit," she says. "Rest. Prep. Then I\'m back on the road."',
+                                'Bob: "The road doesn\'t wait."',
+                                '"Neither do I."',
+                                "She turns to leave.",
+                                "As she passes the threshold, she pauses.",
+                                "Her eyes find yours — warm, curious. Just for a second.",
+                                "Then she's gone, the door easing shut behind her.",
+                                "The Dome feels too quiet. Like the air is deciding what to do now that she isn't in it.",
+                                f'Keeper Bob finally turns to you. "Ah. Good timing, {player}," he says.',
+                                '"I need a favor."',
+                            ],
+                            choice_id="audri_who_choice",
+                        ),
+                        Beat(
+                            lines=[
+                                "He reaches into the tray labeled PENDING and pulls out a small parcel.",
+                                '"This keeps ending up right back where it started," he mutters.',
+                                '"I\'ve been trying to get it to Nate for over a week."',
+                                "He taps the tag with one finger.",
+                                '"His Codex."',
+                                "He watches your face, like he's waiting for you to object.",
+                                '"You know that spot you two used to hang at? The overlook above the lake, on Mystic Trail?"',
+                                '"Nate went out there last night and hasn\'t come back."',
+                                '"Goddamn it — I meant to ask Audri to look into it while she was here."',
+                                "He holds the parcel out.",
+                                '"Take it to him."',
+                            ],
+                        ),
+                        Beat(
+                            lines=[
+                                '"Be careful with it. Useful, but delicate."',
+                                "His voice softens slightly. Not sentiment — patience.",
+                                '"And... yeah. I\'ve got a second Codex back here."',
+                                '"Just saying."',
+                                "He doesn't push you toward it. He just lets that truth sit in the room.",
+                                '"Mystic Trail is usually fine, but lately the path\'s been feeling off."',
+                                '"So be careful."',
+                            ],
+                            choice_id="bob_codex_response",
+                        ),
+                    ],
+                )
+                session.run(self.state)
                 print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
                 print("\nType 'go mystic trail' to head out.")
                 return
@@ -312,33 +325,42 @@ class GameEngine:
             # Post-delivery: Keeper Bob sends GP home for Scene 4 conversation
             if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
                 self.state.flags["mom_blessing_available"] = True
-                print_dialogue([
-                    "Keeper Bob checks your face before he checks your hands.",
-                    '"You found him."',
-                    "Not a question.",
-                    '"Good. Now go talk to your mom. Not tonight — now."',
-                    '"Tell her where you\'re going and mean it."',
-                    '"She already suspects. Don\'t let her sit with that."',
-                    '"Come back after and we finish this."',
-                ])
+                DialogueSession(
+                    npc_name="Keeper Bob",
+                    beats=[Beat(lines=[
+                        "Keeper Bob checks your face before he checks your hands.",
+                        '"You found him."',
+                        "Not a question.",
+                        '"Good. Now go talk to your mom. Not tonight — now."',
+                        '"Tell her where you\'re going and mean it."',
+                        '"She already suspects. Don\'t let her sit with that."',
+                        '"Come back after and we finish this."',
+                    ])],
+                ).run(self.state)
                 print(self.objectives.set_objective(self.state, "mom_blessing"))
                 return
 
             # Scene 4+ follow-up
             if self.state.flags["told_mom_plans"]:
-                print_dialogue([
-                    "Keeper Bob is at his workbench, back to you.",
-                    "An Astari — small, watchful — sits on a perch near the window.",
-                    "It turns its head before Bob does.",
-                    '"Pick the one that picks you. That\'s always been my advice."',
-                    '"The other one already knows you\'re here."',
-                ])
+                DialogueSession(
+                    npc_name="Keeper Bob",
+                    beats=[Beat(lines=[
+                        "Keeper Bob is at his workbench, back to you.",
+                        "An Astari — small, watchful — sits on a perch near the window.",
+                        "It turns its head before Bob does.",
+                        '"Pick the one that picks you. That\'s always been my advice."',
+                        '"The other one already knows you\'re here."',
+                    ])],
+                ).run(self.state)
                 print("(Astari selection coming in the next build.)")
             else:
-                print_dialogue([
-                    "Keeper Bob looks up when you come in.",
-                    '"When you\'ve had that talk at home, come back. Not before."',
-                ])
+                DialogueSession(
+                    npc_name="Keeper Bob",
+                    beats=[Beat(lines=[
+                        "Keeper Bob looks up when you come in.",
+                        '"When you\'ve had that talk at home, come back. Not before."',
+                    ])],
+                ).run(self.state)
             return
 
         # Generic response for other locations
@@ -364,29 +386,39 @@ class GameEngine:
             print(f"There's no one called '{target}' here.")
             return
 
+        # ── NPC name for Dialogue Mode header ─────────────────────────────────
+        npc_name = "Your Mom" if npc_id == "mother" else NPCS[npc_id]["name"]
+
         if npc_id == "mother":
             was_talked = self.state.flags["mom_talked"]
             lines, hint = self.dialogue.talk_to_mother(self.state)
 
             if not was_talked and self.state.flags["mom_talked"]:
-                # ── First encounter: full split-scene flow ────────────────────
-                # Part 1: greeting + "You sleep okay?"
-                print_dialogue(MOTHER_SCENE1_PART1)
-                # Player responds to the question — first interactive beat.
-                run_scene_choice(self.state, "mom_sleep_response")
-                # Part 2: Bob's visit, Nate news, Astari push.
-                print_dialogue(MOTHER_SCENE1_PART2)
-                # Nate stance and readiness stance choices.
-                run_scene_choice(self.state, "mom_nate_response")
-                run_scene_choice(self.state, "mom_readiness_response")
-                print_hint("She's here if there's more on your mind.")
+                # ── First encounter: Dialogue Mode, two-beat session ──────────
+                # Beat A: "Mornin', baby. You sleep okay?" → sleep response
+                # Beat B: Bob's visit + Nate news → nate response
+                session = DialogueSession(
+                    npc_name=npc_name,
+                    beats=[
+                        Beat(lines=MOTHER_SCENE1_PART1, choice_id="mom_sleep_response"),
+                        Beat(lines=MOTHER_SCENE1_PART2, choice_id="mom_nate_response"),
+                    ],
+                    closing_hint="She's here if there's more on your mind.",
+                )
+                session.run(self.state)
                 print(self.objectives.set_objective(self.state, "find_bob", added=True))
                 return
 
-            # ── Subsequent visits ─────────────────────────────────────────────
+            # ── Subsequent visits — still use Dialogue Mode for consistency ───
             if lines:
-                print_dialogue(lines)
-            print_hint(hint)
+                session = DialogueSession(
+                    npc_name=npc_name,
+                    beats=[Beat(lines=lines)],
+                    closing_hint=hint,
+                )
+                session.run(self.state)
+            elif hint:
+                print_hint(hint)
             return
 
         elif npc_id == "bob":
@@ -394,8 +426,17 @@ class GameEngine:
         else:
             lines, hint = self.dialogue.talk_to_town_npc(npc_id)
 
-        print_dialogue(lines)
-        print_hint(hint)
+        # ── All other NPCs: wrap in Dialogue Mode ────────────────────────────
+        # (bob follow-ups, fruit_vendor, old_guard, archivist, etc.)
+        if lines:
+            session = DialogueSession(
+                npc_name=npc_name,
+                beats=[Beat(lines=lines)],
+                closing_hint=hint,
+            )
+            session.run(self.state)
+        elif hint:
+            print_hint(hint)
 
     def _cmd_ask(self, arg: str) -> None:
         trimmed = arg.strip().lower()

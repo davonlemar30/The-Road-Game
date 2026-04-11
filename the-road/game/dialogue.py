@@ -173,7 +173,7 @@ class DialogueManager:
             return ['She nods toward the door. "Go while you still mean it."'], ""
 
         mom_rel = state.relationships.get("mom", 0)
-        if "mom_nate_dismissive" in state.choice_history or "mom_readiness_defensive" in state.choice_history:
+        if "mom_nate_dismissive" in state.choice_history:
             return [
                 "She's not going to bring it back up.",
                 '"You know where I am."',

@@ -110,43 +110,55 @@ SCENE_CHOICES = {
         ],
     },
 
-    # ── Beat C: Optional tone cap — GP's readiness stance ────────────────────
-    # Prompt appears after the Nate discussion settles.
-    # Canon: 2 options only (receptive / hesitant_honest).
-    "mom_readiness_response": {
+    # ── Scene 2: Audri glimpse — who was that? ───────────────────────────────
+    # Fires after Bob says "Good timing. I need a favor."
+    # Canon reference: Scene 2 – Audri Arrives at the Keeper's Dome (86b9b63aw)
+    "audri_who_choice": {
         "prompt_lines": [
-            "She turns back to what she was doing.",
-            "But you can feel she's still listening for what you'll do next.",
+            "The door eases shut. The Dome settles back into its quiet.",
         ],
         "options": [
             {
-                "id": "receptive",
-                "text": "You're right. I've been holding still long enough.",
+                "id": "who_was_that",
+                "text": "Who was that?",
                 "effects": {
-                    "reputation": 1,
-                    "relationships": {"mom": 1},
-                    "disposition": 1,
-                    "history": ["mom_readiness_receptive"],
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["asked_about_audri"],
                 },
                 "response_lines": [
-                    "Her shoulders ease. Just a little.",
-                    '"That\'s all I needed to hear."',
+                    "Bob glances toward the door. A small pause.",
+                    '"Audri. Came back through yesterday — all five Crests."',
+                    '"Finished a full circuit. You don\'t see that often."',
+                    "He turns back to the table.",
+                    '"You\'ll meet her properly. But that\'s not why I called you in."',
                 ],
             },
             {
-                "id": "hesitant_honest",
-                "text": "I'm just not ready yet. There's nothing out there for me.",
+                "id": "focus_forward",
+                "text": "I'll hear the favor.",
                 "effects": {
                     "reputation": 1,
-                    "relationships": {"mom": 1},
-                    "disposition": -1,
-                    "history": ["mom_readiness_honest"],
+                    "relationships": {"bob": 1},
+                    "disposition": 0,
+                    "history": ["skipped_audri_question"],
                 },
                 "response_lines": [
-                    "Her expression stays gentle, but something in her eyes tightens.",
-                    '"You really believe that?"',
-                    '"That there\'s nothin\' out there for you?"',
-                    '"Honey... the world is yours."',
+                    'Bob nods once. "Good instinct."',
+                ],
+            },
+            {
+                "id": "stay_quiet_dome",
+                "text": "[Stay quiet]",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["stayed_quiet_dome"],
+                },
+                "response_lines": [
+                    "He reads the silence. Sets down his tools.",
                 ],
             },
         ],

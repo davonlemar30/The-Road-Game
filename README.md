@@ -1,102 +1,91 @@
-# The Road
+v0.3.4-alpha.6 — DIALOGUE-MODE-PASS
 
-**Alpha Build:** `v0.3.3-alpha.4`  
-**Codename:** `canon-opening-pass`
+Build label: v0.3.4-alpha.6
+Codename: DIALOGUE-MODE-PASS
 
-A terminal-based narrative RPG about choice, connection, and quiet transformation at the edge of a changing world.
+Summary of changes
 
----
+What was removed
 
-## Overview
+mom_readiness_response — fully excised. Deleted from choices_data.py. Call removed from engine._cmd_talk. Dead history-flag reference (mom_readiness_defensive) cleaned from dialogue.py. Zero orphaned references remain across any file. This beat had no support in the Scene 1 canon spec and was adding friction between the Nate response and the exit.
 
-**The Road** is a story-driven terminal RPG focused on exploration, conversation, and emotional progression. It blends authored narrative beats with player input in a text-first interface designed to feel intimate, readable, and reactive.
+What was added
 
-This build contains an **Act 1 intro vertical slice** that now reflects the current canon structure:
+game/dialogue_session.py — new file, the Dialogue Mode framework
 
-- Waking at GP’s house  
-- Talking with Mom  
-- Stepping into Iso Town  
-- Finding **Keeper Bob** at the **Keeper’s Dome**  
-- Receiving Nate’s Codex  
-- Traveling to Mystic Trail  
-- Returning to continue Act 1 progression  
+Beat — data class: lines: list[str] + optional choice_id: str
+DialogueSession — runner: takes npc_name, ordered beats, optional closing_hint; prints a header rule, iterates beats, prints footer rule; returns {choice_id: selected_option_id} for every resolved choice
+_npc_header() / _npc_footer() — visual boundary: ─── Your Mom ──────────────────────────────────── / ────────────────────────────────────────────────────────
+Idempotency is handled by run_scene_choice inside each beat — sessions are safe to re-enter
 
-Long-term, the project will expand into Astari bonding, combat, survival pressure, hidden narrative state, and deeper route-based progression.
+data/choices_data.py — audri_who_choice (new)
 
----
+Fires after Bob's "Good timing. I need a favor." — per Scene 2 canon's [Player Dialogue Choice] beat
+Three options: who_was_that (Bob identifies Audri — all five Crests, finished a full circuit), focus_forward (skip it, get rep +1 with Bob), stay_quiet_dome
+History flags: asked_about_audri, skipped_audri_question, stayed_quiet_dome
 
-## Current Build
+Files touched
 
-This is the most stable and canon-aligned version of the **Act 1 intro vertical slice** so far.
 
-### Included
+How Dialogue Mode works
 
-- Player naming and intro flow  
-- Save/load support with compatibility-safe state merging  
-- House exploration with intentional `look` / `inspect` play  
-- Room-based navigation (e.g. `go downstairs`, `go kitchen`)  
-- Objective tracking and scene gating  
-- Iso Town navigation and location discovery  
-- Phone unlock and map access flow  
-- Keeper’s Dome → Mystic Trail codex-delivery loop  
-- Framed dialogue UI with paginated text  
-- Stationary dialogue box rendering  
-- Guided multiple-choice moments in key scenes (Mom, Bob)  
-- Parser-backed follow-up questions (limited, stability-first)  
-- Early hidden narrative-state system:
-  - reputation  
-  - disposition  
-  - relationships  
-  - choice history  
-- Basic NPC interaction layer  
-- Minimal shop/economy shell  
+Every major NPC conversation now runs through DialogueSession. The player sees a named header rule when entering conversation and a closing rule when leaving it — clear visual separation from parser output. Inside the session, beats play in order: NPC lines display in the existing typewriter dialogue box, then an optional choice box appears. The session collects all choices and returns them. The parser (ask mom nate, ask bob codex, etc.) still works at any time — it bypasses the session and responds inline, as secondary/optional flavor.
 
----
+─── Your Mom ────────────────────────────────────────────────────────────────────
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ "Mornin', baby."                                                             │
+│ She's at the counter...                                                      │
+│ "You sleep okay?"                                                            │
+│   ■ Enter                                                                    │
+└──────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [1]  Slept fine. Yeah.                                                       │
+│ [2]  Not really.                                                             │
+│ [3]  [Stay quiet]                                                            │
+│   ◆ Choose                                                                   │
+└──────────────────────────────────────────────────────────────────────────────┘
+[ ... Part 2 + Nate choice plays ... ]
+She's here if there's more on your mind.
+────────────────────────────────────────────────────────────────────────────────
 
-## What Changed in This Build
+Which NPCs/scenes now use Dialogue Mode
 
-### Canon Alignment Pass
-- Scene 1 now ends with **Find Keeper Bob** (correct story flow)  
-- Opening progression now cleanly follows:
-  - Bob → Dome → Codex → Mystic Trail  
-- Removed legacy **Professor Bob / lab** wording  
-- Standardized naming to **Keeper Bob / Keeper’s Dome**
 
-### Dialogue & Flow Improvements
-- Refined Mom conversation to better match current story tone  
-- Improved choice coherence and emotional clarity  
-- Reduced awkward or immersion-breaking responses  
+All three town NPCs get the header/footer wrapper automatically — no per-NPC code needed.
 
-### Navigation & UX
-- Shifted early gameplay toward **room-based navigation**  
-- Cleaner guidance and hinting throughout the opening  
-- Reduced parser friction in critical early scenes  
+Parser behavior intentionally preserved
 
----
+ask mom [topic] — still works, still returns lines directly (no session wrapper)
+ask bob [topic] — still works
+ask about [topic] — still works (shorthand when only one NPC present)
+Natural language fallback (_handle_unknown) — still works
+tell mom [plan] — still triggers blessing flow, still works
 
-## Core Design Philosophy
+Tests run
 
-### Narrative First
-Systems exist to support tone, characters, and story progression.
+14 smoke checks:
 
-### Text With Presence
-The terminal is part of the experience — pacing, framing, and readability are intentional.
+All imports clean
+2–4. mom_readiness_response removed from choices_data, engine, dialogue (including dead ref)
+audri_who_choice present, 3 options, correct IDs
+bob_codex_response intact
+DialogueSession.run() executes beats and returns choice results
+GameEngine instantiates
+No stale readiness refs in any file
+SCENE_CHOICES data integrity (all options have id + text)
+Mom scene content (sleep line in PART1, Keeper Bob in PART2)
+Objective chain intact (all 6 objectives)
+Engine source contains DialogueSession, Beat(PART1), Beat(PART2), audri_who_choice
+No duplicate imports in engine.py
 
-### Curated Where It Matters
-- Explicit choices for emotional/story beats  
-- Parser input for exploration and curiosity  
+Result: 14/14 passed
 
-### Modular Systems
-The game is built to scale:
-- data-driven dialogue and objectives  
-- expandable state model  
-- modular content files  
-- future support for combat, survival, and Astari systems  
+Known limitations
 
----
+ask mom/bob responses are not wrapped in a session — intentional, they're secondary parser lookups, not curated beats. They still use print_dialogue + print_hint directly.
+Bob's talk_to_bob() path (before entering the Dome) returns a single-beat monologue — it's functional but not yet broken into sub-beats with internal choices. That would be a Scene 2 refinement task.
+The audri_who_choice history flag asked_about_audri isn't yet used for reactive dialogue later (e.g. Bob referencing that you asked). Planting the flag now makes that easy to add.
 
-## Running the Game
+Recommended next task
 
-### Standard
-```bash
-python the-road/main.py
+Scene 1 Bedroom Enrichment Pass — The Post-Alpha Test 4 notes specifically called out the bedroom feeling too plain and the computer/notes interactables being a strong opportunity for character establishment. The canon spec lists: TV+console, computer with half-finished research, loose Astari notes. Making those inspectable and giving them real text is the next highest-value, lowest-risk improvement to the opening slice before the next test build.
