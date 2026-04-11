@@ -1,6 +1,10 @@
 """Main game engine and command loop."""
 
+from __future__ import annotations
+
+from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
+from game.choices import run_scene_choice
 from game.dialogue import DialogueManager
 from game.choices import run_scene_choice
 from game.display import (
@@ -30,15 +34,12 @@ class GameEngine:
         self.dialogue = DialogueManager()
 
     def run(self) -> None:
-        menu_result = self._show_main_menu()
-        if menu_result == "quit":
-            return
-
-        if menu_result == "new":
+        loaded = self._show_main_menu()
+        if not loaded:
             self._show_intro()
             self._prompt_player_name()
             print(self.objectives.set_objective(self.state, "look_around"))
-            print("\nType 'look' to take in your surroundings.")
+            print("\nType 'look' to take in your room.")
 
         while self.state.running:
             self._render_hud()
@@ -79,7 +80,7 @@ class GameEngine:
             if self.state.flags["in_town"]:
                 print("Type a command. Try: look, go square, where, inspect door, talk bob, help.")
             else:
-                print("Type a command. Try: look, go south, inspect mirror, talk mom, help.")
+                print("Type a command. Try: look, go downstairs, inspect mirror, talk mom, help.")
             return
 
         handlers = {
@@ -140,19 +141,23 @@ class GameEngine:
     def _cmd_go_house(self, arg: str) -> None:
         direction = arg.strip().lower()
         if not direction:
-            print("Go where? Example: go south")
+            print("Go where? Try: go downstairs  /  go kitchen  /  go front door  /  go out")
             return
 
-        if self.state.current_location == "front_door" and direction == "out":
-            if not self.state.flags["mom_talked"]:
-                print(
-                    "Something holds you at the threshold. "
-                    "You haven't talked to your mom yet — not really."
-                )
-                print("(Talk to her. Tell her where you're going.)")
+        # Any exit that leads to "outside" in the front_door exits dict means
+        # the player wants to leave the house — route to _transition_to_town.
+        if self.state.current_location == "front_door":
+            exits = self.world.get_location("front_door")["exits"]
+            if exits.get(direction) == "outside":
+                if not self.state.flags["mom_talked"]:
+                    print(
+                        "Something holds you at the threshold. "
+                        "You haven't talked to your mom yet — not really."
+                    )
+                    print("Type 'talk mom' first.")
+                    return
+                self._transition_to_town()
                 return
-            self._transition_to_town()
-            return
 
         success, result = self.world.move(self.state.current_location, direction)
         if not success:
@@ -213,45 +218,93 @@ class GameEngine:
                 self._scene2_hook()
                 return
 
-            # Scene 2 setup: Bob gives Nate's Codex after the intro event
+            # Scene 2 interior: Audri farewell + Keeper Bob Codex handoff
             if not self.state.flags["codex_given"]:
                 self.state.flags["codex_given"] = True
                 if "Nate's Codex Parcel" not in self.state.inventory:
                     self.state.inventory.append("Nate's Codex Parcel")
-                print("\nThe door opens the rest of the way and Bob waves you in.")
-                print("Audri is already by the equipment table, speaking quietly with him.")
-                print("She glances at you once — measuring, unreadable — then returns to the route map.")
-                print()
-                print('Bob rubs his forehead. "Good timing. I need a favor."')
-                print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
-                print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+
+                # ── Audri departure beat ──────────────────────────────────────
+                # The room smells like ozone and old wood. Keeper Bob is at the
+                # main worktable. A young woman stands near the far side.
+                print_dialogue([
+                    "The space inside the Dome smells like ozone, dried herbs, and old wood.",
+                    "Keeper Bob is at the worktable, hands busy. He doesn't look up yet.",
+                    "A young woman stands near the far side of the table.",
+                    "She doesn't fill the room with noise. But the room feels different with her in it.",
+                    'Bob\'s voice, steady: "All five Crests. You\'ve done this town proud."',
+                    "The young woman nods once.",
+                    '"I\'m staying in Iso Town for a bit," she says. "Rest. Prep. Then I\'m back on the road."',
+                    'Bob: "The road doesn\'t wait."',
+                    '"Neither do I."',
+                ])
+                print_dialogue([
+                    "She turns to leave.",
+                    "As she passes the threshold, she pauses.",
+                    "Her eyes find yours — warm, curious. Just for a second.",
+                    "Then she's gone, the door easing shut behind her.",
+                    "The Dome feels too quiet. Like the air is deciding what to do now that she isn't in it.",
+                ])
+
+                # ── Keeper Bob + Codex ────────────────────────────────────────
+                print_dialogue([
+                    f'Keeper Bob finally turns to you. "Good timing," he says.',
+                    '"I need a favor."',
+                    "He reaches into the tray labeled PENDING and pulls out a small parcel.",
+                    '"This keeps ending up right back where it started," he mutters.',
+                    '"I\'ve been trying to get it to Nate for over a week."',
+                    "He taps the tag with one finger.",
+                    '"His Codex."',
+                    "He watches your face, like he's waiting for you to object.",
+                    '"You know that spot you two used to hang at? The overlook above the lake, on Mystic Trail?"',
+                    '"Nate went out there last night and hasn\'t come back."',
+                    "He holds the parcel out.",
+                    '"Take it to him."',
+                ])
+                print_dialogue([
+                    '"Be careful with it. Useful, but delicate."',
+                    "His voice softens slightly. Not sentiment — patience.",
+                    '"And... yeah. I\'ve got a second Codex back here."',
+                    '"Just saying."',
+                    "He doesn't push you toward it. He just lets that truth sit in the room.",
+                    '"Mystic Trail is usually fine, but lately the path\'s been feeling off."',
+                    '"So be careful."',
+                ])
                 run_scene_choice(self.state, "bob_codex_response")
-                print(self.objectives.set_objective(self.state, "deliver_codex"))
-                print("\n(Type 'go mystic trail' to look for Nate.)")
+                print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
+                print("\nType 'go mystic trail' to head out.")
                 return
 
-            # Post-delivery: Bob sends GP home for Scene 4 conversation
+            # Post-delivery: Keeper Bob sends GP home for Scene 4 conversation
             if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
                 self.state.flags["mom_blessing_available"] = True
-                print("\nBob checks your face before he checks your hands.")
-                print('"Good. You found Nate." He nods toward the town. "Now go talk to your mom."')
-                print('"No half-steps. Come back after that conversation and we\'ll continue."')
+                print_dialogue([
+                    "Keeper Bob checks your face before he checks your hands.",
+                    '"You found him."',
+                    "Not a question.",
+                    '"Good. Now go talk to your mom. Not tonight — now."',
+                    '"Tell her where you\'re going and mean it."',
+                    '"She already suspects. Don\'t let her sit with that."',
+                    '"Come back after and we finish this."',
+                ])
                 print(self.objectives.set_objective(self.state, "mom_blessing"))
                 return
 
             # Scene 4+ follow-up
-            print("\nThe door is open. You step inside.")
-            print("─" * 40)
-            print("Professor Bob is at his workbench, back to you.")
             if self.state.flags["told_mom_plans"]:
-                print("An Astari — small, watchful — sits on a perch near the window.")
-                print("Bob doesn't look up immediately.")
-                print('  "Pick the one that picks you. That\'s always been my advice."')
-                print('  "The other one already knows you\'re here."')
-                print("(Starter selection is still in progress.)")
+                print_dialogue([
+                    "Keeper Bob is at his workbench, back to you.",
+                    "An Astari — small, watchful — sits on a perch near the window.",
+                    "It turns its head before Bob does.",
+                    '"Pick the one that picks you. That\'s always been my advice."',
+                    '"The other one already knows you\'re here."',
+                ])
+                print("(Astari selection coming in the next build.)")
             else:
-                print('Bob says, "When you\'ve had that talk at home, come back."')
-            print("─" * 40)
+                print_dialogue([
+                    "Keeper Bob looks up when you come in.",
+                    '"When you\'ve had that talk at home, come back. Not before."',
+                ])
             return
 
         # Generic response for other locations
@@ -280,13 +333,28 @@ class GameEngine:
         if npc_id == "mother":
             was_talked = self.state.flags["mom_talked"]
             lines, hint = self.dialogue.talk_to_mother(self.state)
+
             if not was_talked and self.state.flags["mom_talked"]:
-                print_dialogue(lines)
+                # ── First encounter: full split-scene flow ────────────────────
+                # Part 1: greeting + "You sleep okay?"
+                print_dialogue(MOTHER_SCENE1_PART1)
+                # Player responds to the question — first interactive beat.
+                run_scene_choice(self.state, "mom_sleep_response")
+                # Part 2: Bob's visit, Nate news, Astari push.
+                print_dialogue(MOTHER_SCENE1_PART2)
+                # Nate stance and readiness stance choices.
                 run_scene_choice(self.state, "mom_nate_response")
                 run_scene_choice(self.state, "mom_readiness_response")
-                print_hint(hint)
+                print_hint("She's here if there's more on your mind.")
                 print(self.objectives.set_objective(self.state, "find_bob", added=True))
                 return
+
+            # ── Subsequent visits ─────────────────────────────────────────────
+            if lines:
+                print_dialogue(lines)
+            print_hint(hint)
+            return
+
         elif npc_id == "bob":
             lines, hint = self.dialogue.talk_to_bob(self.state)
         else:
@@ -465,10 +533,9 @@ class GameEngine:
         print("  look (or l)              — describe where you are")
         print("  where                    — quick location + nearby places")
         if self.state.flags["in_town"]:
-            print("  go [place]               — travel to a nearby location by name")
-            print("                             (e.g. go square  /  go keeper's dome)")
+            print("  go [place]               — travel by name (e.g. go square  /  go keeper's dome)")
         else:
-            print("  go [direction]           — north / south / east / west / out")
+            print("  go [room or direction]   — e.g. go downstairs  /  go kitchen  /  go out")
         print("  inspect [object]         — examine something here")
         print("  talk [npc]               — start a conversation  (e.g. talk mom)")
         print("  ask [npc] [topic]        — ask something specific (e.g. ask mom nate)")
@@ -545,10 +612,12 @@ class GameEngine:
             print("\nYour mom is here, in her chair. She hears you come down.")
             print(self.objectives.set_objective(self.state, "talk_to_mom"))
 
-        elif location_id == "front_door" and self.state.flags["told_mom_plans"]:
-            print("The door is unlocked. Type 'go out' when you're ready.")
-        elif location_id == "front_door" and not self.state.flags["mom_talked"]:
-            print("You stand at the door. Something tells you to talk to your mom first.")
+        elif location_id == "front_door":
+            if not self.state.flags["mom_talked"]:
+                print("Something pulls you back. You haven't spoken to your mom yet.")
+                print("Type 'go upstairs' to find her, or 'talk mom' if she's nearby.")
+            else:
+                print("The door is right there. Type 'go out' when you're ready.")
 
     def _on_town_node_entered(self, node_id: str) -> None:
         # Track exploration for map fog-of-war
@@ -591,63 +660,22 @@ class GameEngine:
         if "front_street" not in self.state.discovered_locations:
             self.state.discovered_locations.append("front_street")
 
-        if self.state.flags["has_old_phone"]:
-            print("\n(The phone is off. Type 'use phone' to turn it on.)")
-        print(self.objectives.set_objective(self.state, "find_nate", added=True))
+        # find_bob was already set during the Mom conversation —
+        # do NOT override it with find_nate here.
+        # Remind the player of their current objective.
+        print(f"\nObjective: {self.state.current_objective}")
         print("\nType 'look' to take in Front Street.")
 
     # ── Scene 2 hook ─────────────────────────────────────────────────────────
 
     def _scene2_hook(self) -> None:
         """Scene 2 intro event when player first arrives at The Keeper's Dome."""
-        print("\n" + "─" * 40)
-        print("The Dome is low and round, set back from everything else.")
-        print("The door is barely open. Voices carry from inside — Bob's, and someone unfamiliar.")
-        print()
-        print("You catch a glimpse of Audri by the equipment table before she disappears deeper in.")
-        print('Bob calls out, "Come in. I\'ve got something for Nate."')
-        print("─" * 40)
-        print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
-        print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")
-
-    def _show_main_menu(self) -> str:
-        """
-        Startup title + menu.
-
-        Returns:
-          - "new" for new game flow
-          - "load" when a save is loaded successfully
-          - "quit" to exit before entering the game loop
-        """
-        import os
-        from game.persistence import SAVE_FILE
-
-        print_title_screen()
-        has_save = os.path.exists(SAVE_FILE)
-        options = [
-            "NEW GAME",
-            "LOAD GAME" if has_save else "LOAD GAME (No save found)",
-            "QUIT",
-        ]
-        picked = menu_choice("Main Menu", options)
-
-        if picked == 2:
-            print("\nSee you on the road.")
-            return "quit"
-
-        if picked == 1:
-            if not has_save:
-                print("\nNo save found. Starting a new game.\n")
-                return "new"
-            ok, result = load_game()
-            if ok:
-                self.state = result
-                print(f"\nWelcome back, {self.state.player_name}.")
-                print(f"Current objective: {self.state.current_objective}")
-                print("\nType 'look' to get your bearings.")
-                return "load"
-            print(f"Could not load save: {result}")
-            print("Starting a new game instead.\n")
-            return "new"
-
-        return "new"
+        print_dialogue([
+            "The Keeper's Dome sits low and round, set back from the street like it was built to listen more than be seen.",
+            "The door is half-open. Voices carry through the gap — low, controlled.",
+            "The kind of conversation that doesn't need to be loud to have weight.",
+            "You step closer.",
+            '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
+        ])
+        print(self.objectives.set_objective(self.state, "enter_dome", added=True))
+        print("\nType 'enter' to step inside.")

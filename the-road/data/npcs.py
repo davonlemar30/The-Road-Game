@@ -7,8 +7,8 @@ NPCS = {
         "location": "living_room",
     },
     "bob": {
-        "name": "Professor Bob",
-        "aliases": {"bob", "professor bob", "prof bob", "keeper"},
+        "name": "Keeper Bob",
+        "aliases": {"bob", "keeper bob", "keeper", "professor bob", "prof bob"},
         "location": "keepers_dome",
     },
     "fruit_vendor": {

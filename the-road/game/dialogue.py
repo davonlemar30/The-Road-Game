@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from data.dialogue_data import (
     MOTHER_AFTER,
-    MOTHER_SCENE1,
-    MOTHER_SCENE1_HINT,
     MOM_BLESSING,
     MOM_BLESSING_HINT,
     MOM_QA,
@@ -38,11 +36,20 @@ _MOM_SYNONYMS: dict[str, str] = {
     "professor":    "bob",
     "keeper":       "bob",
     # → bob said (what happened / the situation)
+    # NOTE: these intentionally listed after "bob" so that "what did bob say"
+    # resolves to "bob said" via last-match (the scanner returns the final hit).
     "happened":     "bob said",
     "situation":    "bob said",
     "happening":    "bob said",
     "visit":        "bob said",
     "morning":      "bob said",
+    "say":          "bob said",
+    "said":         "bob said",
+    "tell":         "bob said",
+    "told":         "bob said",
+    "news":         "bob said",
+    "want":         "bob said",
+    "wanted":       "bob said",
     # → nate
     "nate":         "nate",
     # → nate trouble
@@ -108,21 +115,26 @@ _BOB_SYNONYMS: dict[str, str] = {
 
 def _keyword_match(raw: str, synonyms: dict[str, str]) -> str | None:
     """
-    Scan a free-form phrase word-by-word for the first synonym key match.
+    Scan a free-form phrase word-by-word and return the LAST synonym match.
+
+    Using the last match (rather than the first) means more specific words at
+    the end of a phrase win over general words at the start.  This lets natural
+    phrasings like "what did bob say" resolve to "bob said" rather than "bob",
+    because "say" appears later in the input than "bob".
 
     Strips common punctuation before tokenizing so inputs like "Who is Bob?"
-    and "What's wrong with Nate?" resolve correctly without the parser having
-    already cleaned them.
+    and "What's wrong with Nate?" resolve correctly.
 
     Returns the canonical topic slug, or None if no word matches.
     """
     cleaned = raw.lower()
-    for ch in '".,!?;:-()':
+    for ch in '".,!?;:-()\'':
         cleaned = cleaned.replace(ch, " ")
+    result = None
     for word in cleaned.split():
         if word in synonyms:
-            return synonyms[word]
-    return None
+            result = synonyms[word]
+    return result
 
 
 def _strip_topic_fillers(topic: str) -> str:
@@ -145,21 +157,32 @@ class DialogueManager:
         """
         Primary 'talk mom' interaction.
         Returns (dialogue_lines, hint_text).
-        hint_text is an empty string when there is nothing extra to show.
+
+        On the first call: sets mom_talked and returns ([], "") — the engine
+        detects this and orchestrates the full split-scene flow itself
+        (Part 1 → sleep choice → Part 2 → stance choices).
+
+        On subsequent calls: returns the appropriate short follow-up lines.
         """
         if not state.flags["mom_talked"]:
             state.flags["mom_talked"] = True
-            # permission_granted is NOT set here — player must tell mom their plan first
-            return list(MOTHER_SCENE1), MOTHER_SCENE1_HINT
+            # Engine handles display of the full first scene.
+            return [], ""
 
         if state.flags["told_mom_plans"]:
             return ['She nods toward the door. "Go while you still mean it."'], ""
 
         mom_rel = state.relationships.get("mom", 0)
         if "mom_nate_dismissive" in state.choice_history or "mom_readiness_defensive" in state.choice_history:
-            return ['She folds her arms. "You\'re still deciding what kind of promise you meant."'], ""
+            return [
+                "She's not going to bring it back up.",
+                '"You know where I am."',
+            ], ""
         if mom_rel >= 2:
-            return ['Her voice softens. "I see you trying. Keep moving."'], ""
+            return [
+                "Something in her eases when she looks at you.",
+                '"Go on."',
+            ], ""
         if state.disposition <= -1:
             return ['She gives you a steady look. "Careful is fine. Frozen isn\'t."'], ""
 
@@ -182,16 +205,16 @@ class DialogueManager:
                     "He holds your eye a beat longer than is comfortable.",
                     '"And when you get back — we finish your attunement. Not a suggestion."',
                 ],
-                "(ask him about: nate  •  codex  •  trail  •  astrali  •  the field)",
+                "",
             )
         if state.flags["codex_given"] and not state.flags["codex_delivered"]:
             reminder = '"Nate needs that Codex. Get it to the overlook and come back."'
             if "bob_codex_accept_cleanly" in state.choice_history:
-                reminder = '"You said you\'d run it over. I trust that. Go."'
+                reminder = '"You said you\'d head out. I\'m still expecting that."'
             elif "bob_codex_ask_urgency" in state.choice_history:
-                reminder = '"You wanted urgency. Here it is: every hour out there matters."'
+                reminder = '"Same answer: the Field is loud, Nate has no guide. Get there."'
             elif "bob_codex_why_me" in state.choice_history:
-                reminder = '"Still wondering why you? Carry it anyway. Answers come on the road."'
+                reminder = '"Still wondering why you? Carry it. Answers come on the road."'
             return (
                 [
                     '"You still have it."',
@@ -218,7 +241,7 @@ class DialogueManager:
                 "A beat. He reads your face.",
                 '"Then we\'re ready. Let\'s not waste it."',
             ],
-            "(ask him about: astrali  •  trail  •  the field)",
+            "",
         )
 
     def ask_bob(self, state, topic: str) -> tuple:

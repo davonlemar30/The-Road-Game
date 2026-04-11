@@ -6,7 +6,7 @@ MOM_BLESSING = [
     "She goes quiet for a second. Just a second.",
     '"So you\'re really going."',
     "Not a question. She already knew.",
-    '"Alright. But you go see Professor Bob first."',
+    '"Alright. But you go see Keeper Bob first."',
     '"Get yourself an Astari before you do anything else — I mean it."',
     '"You can\'t go into the Forbidden Trail without one. Not safely."',
     "She disappears into the kitchen. Comes back with an old phone in her hand.",
@@ -20,29 +20,35 @@ MOM_BLESSING = [
 
 MOM_BLESSING_HINT = "(You have Mom's old phone. Head back to the Keeper's Dome when you're ready.)"
 
-# Mom's main monologue — plays on first talk, Scene 1
-# Voice: warm, Southern-inflected, tired but loving. Present before practical.
-MOTHER_SCENE1 = [
+# Mom's opening — up to and including "You sleep okay?"
+# Followed by the sleep-response choice before the rest of the scene.
+MOTHER_SCENE1_PART1 = [
     '"Mornin\', baby."',
     "She's at the counter. A cloth in her hand. The kettle's already run — she's been up a while.",
     '"You sleep okay?"',
-    "She doesn't wait. She already knows you did.",
-    '"Professor Bob stopped by while you were out cold. Before sunrise — you know he doesn\'t do that."',
-    '"He was asking about Nate."',
-    "She sets down the cloth and turns.",
-    '"Said Nate had been in and out of the Dome, digging through trail records, asking questions. Then just stopped coming. Took some of Bob\'s field notes when he left."',
-    '"Bob wasn\'t angry. He was worried. That\'s worse."',
-    '"You need to go see him. Today. Not whenever."',
-    "The kettle clicks off. She's quiet for a moment.",
-    '"And I mean it this time — get yourself an Astari while you\'re there."',
-    '"It\'s not just about the trail, baby. It\'s about knowing you\'re ready before you have to be."',
-    '"There\'s a difference between bein\' careful and just... staying still."',
 ]
 
-# Single-line hint shown once after Mom's monologue
-MOTHER_SCENE1_HINT = (
-    "(She's here if you have questions — bob said  •  nate  •  astari  •  dangerous  •  outside)"
-)
+# Mom's main news — plays after the player responds to "You sleep okay?"
+# Voice: warm, Southern-inflected, tired but loving. Present before practical.
+# Canon reference: Scene 1 – Prologue: "Still Here" (ClickUp 86b9b63au)
+MOTHER_SCENE1_PART2 = [
+    '"Keeper Bob stopped by earlier,"',
+    "She keeps working, correcting herself without thinking.",
+    '"He was lookin\' for that friend of yours. Nate."',
+    "A pause. She sets the cloth down.",
+    '"Bob wasn\'t angry. He just looked... worried. Which is unlike him."',
+    "She finally glances up at you.",
+    '"Go check on him," she says. "See if there\'s anything you can do."',
+    "Then, softer:",
+    '"And if you go pokin\' around that trail... just be careful out there, honey."',
+    '"That place been feelin\'... off lately."',
+]
+
+# Kept for reference; no longer used in the active scene flow.
+MOTHER_SCENE1 = MOTHER_SCENE1_PART1 + MOTHER_SCENE1_PART2
+
+# Hint shown after the opening scene — plain, conversational.
+MOTHER_SCENE1_HINT = "She's here if there's more on your mind."
 
 # Dismissal lines — after scene1 dialogue is done, repeated talks
 MOTHER_AFTER = [
@@ -69,7 +75,7 @@ MOM_QA: dict[str, dict] = {
             '"He\'s got fire. Always has. Just needs someone who can think a step ahead of it."',
             '"Right now that might need to be you."',
         ],
-        "hint": "(dig deeper: nate trail  •  nate trouble  •  nate dangerous)",
+        "hint": "",
         "followups": {
             "nate trail": [
                 '"The Mystic Trail?"',
@@ -81,7 +87,7 @@ MOM_QA: dict[str, dict] = {
             "nate trouble": [
                 "She sets down the mug she's been holding.",
                 '"I don\'t know exactly. That\'s what worries me."',
-                '"Professor Bob was on my porch before sunrise. He doesn\'t do that."',
+                '"Keeper Bob was on my porch before sunrise. He doesn\'t do that."',
                 '"Whatever it is, it was enough to send him here instead of waiting."',
                 '"That tells me enough."',
             ],
@@ -104,7 +110,7 @@ MOM_QA: dict[str, dict] = {
             '"The world out there — the roads, the trails between towns — it\'s rougher than it used to be. Not built for people going alone."',
             '"An Astari changes that."',
         ],
-        "hint": "(dig deeper: astrali bond  •  astrali dangerous  •  astrali get  •  no astrali)",
+        "hint": "",
         "followups": {
             "astrali bond": [
                 '"The bond isn\'t something that just happens."',
@@ -119,7 +125,7 @@ MOM_QA: dict[str, dict] = {
                 '"You\'ve waited longer than most."',
             ],
             "astrali get": [
-                '"Professor Bob keeps a few at the Keeper\'s Dome."',
+                '"Keeper Bob keeps a few at the Keeper\'s Dome."',
                 '"Has for years. He\'s been asking when you were coming in to choose."',
                 '"He mentioned you specifically, more than once."',
                 'A small pause. "Maybe now\'s the time."',
@@ -141,7 +147,7 @@ MOM_QA: dict[str, dict] = {
             '"The Crests help — they signal that you\'ve been tested, that you carry yourself a certain way."',
             '"But you don\'t have one yet. So you go careful."',
         ],
-        "hint": "(dig deeper: outside crests  •  outside town  •  outside collapse)",
+        "hint": "",
         "followups": {
             "outside crests": [
                 '"Crests are how people read you out there."',
@@ -176,7 +182,7 @@ MOM_QA: dict[str, dict] = {
             "A small pause.",
             '"I didn\'t push him on what that meant. But he looked like a man who\'d slept on a bad feeling."',
         ],
-        "hint": "(you can ask: nate trouble  •  dangerous)",
+        "hint": "",
         "followups": {},
     },
 
@@ -199,20 +205,20 @@ MOM_QA: dict[str, dict] = {
             "Again — not a question.",
             '"Then say it. Tell me you\'re going."',
         ],
-        "hint": "(try: tell mom i'm going  •  ask mom i'll go)",
+        "hint": "Try telling her directly.",
         "followups": {},
     },
 
     # ── PROFESSOR BOB ────────────────────────────────────────────────────────
     "bob": {
         "answer": [
-            '"Professor Bob\'s been here longer than most people remember."',
+            '"Keeper Bob\'s been here longer than most people remember."',
             '"Keeps the Dome running almost by himself. Good man — disorganized, but good."',
             '"He had a couple Astari in there he was holding for students who never showed up."',
             '"Then this morning he\'s knocking on my door before I\'ve even had my coffee."',
             '"Looking like he hadn\'t slept. Asking about Nate."',
         ],
-        "hint": "(dig deeper: bob dome  •  bob nate  •  bob astari)",
+        "hint": "",
         "followups": {
             "bob dome": [
                 '"The Keeper\'s Dome, down near the edge of town."',

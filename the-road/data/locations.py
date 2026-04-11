@@ -2,31 +2,43 @@
 
 All inspect text sourced from GP's House (ClickUp canon).
 Descriptions are revealed only when the player uses 'look'.
+
+Navigation note: exits use room-based names as primary keys so commands like
+  go downstairs / go kitchen / go front door / go out
+feel natural.  Cardinal directions (south, north, etc.) remain as aliases so
+existing saves and habit-formed inputs continue to work.
 """
 
 LOCATIONS = {
     "bedroom": {
         "name": "Bedroom",
         "description": (
-            "Warm and still. The ceiling fan ticks on its slowest setting. "
-            "A TV on the dresser, PS5 underneath it — controller cord dangling. "
-            "A gaming computer in the corner, fan humming even now. "
-            "Books you've half-read, notes you've half-started. "
-            "You've been in this same groove long enough that the floor knows your footsteps."
+            "The ceiling hasn't changed. The same hairline crack runs along the corner "
+            "like a thought you never finish.\n"
+            "The room feels lived-in, but not lived-through — like someone who keeps meaning "
+            "to become themselves and keeps choosing 'later' instead.\n"
+            "A TV on the dresser, PS5 underneath it. A gaming computer in the corner, "
+            "fan humming even now. Books half-read, notes half-started.\n"
+            "Iso Town sits quiet outside your window. Not asleep. Just waiting."
         ),
-        "exits": {"south": "living_room"},
+        "exits": {
+            # primary: room-based
+            "downstairs": "living_room",
+            # aliases
+            "down":  "living_room",
+            "south": "living_room",
+        },
         "interactables": {
             "mirror": (
-                "Tape marks where old notes used to be. "
-                "You can almost remember what they said. Almost."
+                "You look like someone who knows the answers and never uses them."
             ),
             "bookshelf": (
-                "Spines you've reread enough to memorize. "
-                "The new ones still look too clean."
+                "A thick book near the top: Dreams Deferred. Spine too clean — never opened. "
+                "The others have been read and reread until the spines cracked."
             ),
             "window": (
-                "Outside is louder than you want it to be. "
-                "You keep the curtains half-closed like a compromise."
+                "Iso Town sits quiet, like it's holding its breath. "
+                "You've been holding yours too."
             ),
             "chair": (
                 "Three layers of clothes you meant to hang up. "
@@ -49,7 +61,7 @@ LOCATIONS = {
             "computer": (
                 "A mid-tier gaming rig, built piece by piece. The fan hums constantly. "
                 "The monitor is dark but a browser tab is still open from last night. "
-                "You can inspect it closer. Type 'inspect notes' to read what's on the screen."
+                "Type 'inspect notes' to read what's on the screen."
             ),
             "notes": (
                 "A browser tab left open: a forum thread titled 'Astari bonding — what nobody tells you.' "
@@ -70,11 +82,18 @@ LOCATIONS = {
             "The curtains are half-drawn. A lamp burns soft gold even in the morning. "
             "The TV glows in the corner — old pre-collapse programming on a loop, "
             "signal that never stopped coming through. "
-            "Your mom's chair faces it. It's warm in here. It's a little too warm in here."
+            "Your mom's chair faces it. It's warm in here. A little too warm."
         ),
         "exits": {
+            # primary: room-based
+            "upstairs":    "bedroom",
+            "kitchen":     "kitchen",
+            "front door":  "front_door",
+            # aliases
+            "up":    "bedroom",
             "north": "bedroom",
-            "east": "kitchen",
+            "east":  "kitchen",
+            "door":  "front_door",
             "south": "front_door",
         },
         "interactables": {
@@ -97,7 +116,7 @@ LOCATIONS = {
             ),
             "stairs": (
                 "The banister is worn smooth from years of the same hand on the same path. "
-                "Upstairs is yours. Downstairs is shared. The landing is the in-between."
+                "Upstairs is yours. Down here is shared."
             ),
         },
     },
@@ -109,11 +128,17 @@ LOCATIONS = {
             "she was up before you. Two mugs: one clean in the rack, one left to the side. "
             "A list on the counter in her handwriting."
         ),
-        "exits": {"west": "living_room"},
+        "exits": {
+            # primary: room-based
+            "living room": "living_room",
+            # aliases
+            "back":  "living_room",
+            "west":  "living_room",
+        },
         "interactables": {
             "kettle": (
                 "Still warm. She had hers hours ago. "
-                "Cold metal. You can almost hear mornings that started better."
+                "You can almost hear mornings that started better."
             ),
             "list": (
                 "Bills. Errands. Reminders. "
@@ -136,11 +161,20 @@ LOCATIONS = {
             "The door is reinforced and heavy, built to hold something back. "
             "Through the gap at the bottom you can feel the street — cooler, sharper, different. "
             "A small porch. A wind chime that barely moves. "
-            "The yard patch beyond has something struggling to grow."
+            "The yard patch beyond has something struggling to grow.\n"
+            "Type 'go out' or 'go outside' when you're ready to leave."
         ),
         "exits": {
-            "north": "living_room",
-            "out": "outside",
+            # primary: room-based
+            "living room": "living_room",
+            "outside":     "outside",
+            "out":         "outside",
+            # aliases
+            "back":   "living_room",
+            "inside": "living_room",
+            "in":     "living_room",
+            "north":  "living_room",
+            "leave":  "outside",
         },
         "interactables": {
             "door": (

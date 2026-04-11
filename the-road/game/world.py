@@ -1,6 +1,14 @@
 """World helpers for locations and movement."""
 
+from __future__ import annotations
+
 from data.locations import LOCATIONS
+
+# Cardinal directions are still valid movement aliases, but we prefer not to
+# surface them in the player-facing "Exits:" line when room-based names exist.
+_CARDINAL_ALIASES: frozenset[str] = frozenset(
+    {"north", "south", "east", "west", "up", "down", "in", "back", "leave", "inside"}
+)
 
 
 class World:
@@ -12,8 +20,20 @@ class World:
 
     def describe_location(self, location_id: str) -> str:
         location = self.get_location(location_id)
-        exits = ", ".join(location["exits"].keys())
-        return f"\n[{location['name']}]\n{location['description']}\nExits: {exits}"
+        exits = self._display_exits(location["exits"])
+        return f"\n[{location['name']}]\n{location['description']}\n\nExits: {exits}"
+
+    def _display_exits(self, exits: dict) -> str:
+        """Return a clean, player-facing list of exit names.
+
+        Prefers room-based names over raw cardinal directions.
+        Only falls back to cardinals if nothing else is available.
+        """
+        preferred = [k for k in exits if k not in _CARDINAL_ALIASES]
+        if preferred:
+            return ", ".join(preferred)
+        # Fallback: nothing non-cardinal exists (shouldn't happen in practice).
+        return ", ".join(exits.keys())
 
     def move(self, from_location: str, direction: str) -> tuple[bool, str]:
         location = self.get_location(from_location)
