@@ -92,7 +92,7 @@ class TownWorld:
             for shop in shops:
                 aliases = {shop["name"].lower(), *(a.lower() for a in shop.get("aliases", []))}
                 if key in aliases:
-                    items = "\n".join(f"  - {i['name']} ({i['price']} tokens)" for i in shop.get("items", []))
+                    items = "\n".join(f"  - {i['name']} ({i['price']} gold)" for i in shop.get("items", []))
                     return True, f"\n[{shop['name']}]\n{shop['description']}\n{items}"
 
         summaries = [f"- {shop['name']}: {shop['description']}" for shop in shops]

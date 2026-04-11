@@ -48,6 +48,8 @@ def parse_command(raw: str) -> tuple:
 
     elif verb in {"inventory", "inv", "i", "items"}:
         verb = "inventory"
+    elif verb in {"status", "hub", "player"}:
+        verb = "status"
     elif verb in {"shop", "trade"}:
         verb = "browse"
 
