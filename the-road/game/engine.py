@@ -2,12 +2,21 @@
 
 from data.npcs import NPCS
 from game.dialogue import DialogueManager
-from game.display import print_dialogue, print_hint
+from game.choices import run_scene_choice
+from game.display import (
+    menu_choice,
+    print_dialogue,
+    print_hint,
+    print_hud,
+    print_status_screen,
+    print_title_screen,
+)
 from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import load_game, save_game
 from game.state import GameState
+from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
 from game.world import World
 
@@ -21,15 +30,21 @@ class GameEngine:
         self.dialogue = DialogueManager()
 
     def run(self) -> None:
-        self._show_intro()
+        # Defensive fallback: if a partial merge drops _show_main_menu, the
+        # game should still boot into NEW GAME flow instead of crashing.
+        menu_fn = getattr(self, "_show_main_menu", None)
+        menu_result = menu_fn() if callable(menu_fn) else "new"
+        if menu_result == "quit":
+            return
 
-        loaded = self._offer_load()
-        if not loaded:
+        if menu_result == "new":
+            self._show_intro()
             self._prompt_player_name()
             print(self.objectives.set_objective(self.state, "look_around"))
             print("\nType 'look' to take in your surroundings.")
 
         while self.state.running:
+            self._render_hud()
             raw = input("\n> ")
             verb, arg = parse_command(raw)
             self._handle_command(verb, arg)
@@ -37,35 +52,19 @@ class GameEngine:
     # ── Startup ──────────────────────────────────────────────────────────────
 
     def _show_intro(self) -> None:
-        print("=" * 40)
-        print("          THE ROAD")
-        print("   Prologue: STILL HERE")
-        print("=" * 40)
         print(
             "\nYou wake where you've always been: "
             "waiting for movement to become a decision."
         )
 
-    def _offer_load(self) -> bool:
-        """Ask if player wants to load. Returns True if a save was loaded."""
-        import os
-        from game.persistence import SAVE_FILE
+    def _render_hud(self) -> None:
+        location_name = self._current_location_name()
+        print_hud(self.state, location_name)
 
-        if not os.path.exists(SAVE_FILE):
-            return False
-
-        answer = input("\nA save file exists. Load it? (y/n): ").strip().lower()
-        if answer in {"y", "yes"}:
-            ok, result = load_game()
-            if ok:
-                self.state = result
-                print(f"\nWelcome back, {self.state.player_name}.")
-                print(f"Current objective: {self.state.current_objective}")
-                print("\nType 'look' to get your bearings.")
-                return True
-            else:
-                print(f"Could not load save: {result}")
-        return False
+    def _current_location_name(self) -> str:
+        if self.state.flags["in_town"]:
+            return self.town.get_node(self.state.current_location)["name"]
+        return self.world.get_location(self.state.current_location)["name"]
 
     def _prompt_player_name(self) -> None:
         while not self.state.player_name:
@@ -103,6 +102,7 @@ class GameEngine:
             "load":      self._cmd_load,
             "help":      self._cmd_help,
             "objective": self._cmd_objective,
+            "status":    self._cmd_status,
             "quit":      self._cmd_quit,
         }
 
@@ -163,6 +163,7 @@ class GameEngine:
             return
 
         self.state.current_location = result
+        advance_time(self.state, 5)
         location_name = self.world.get_location(result)["name"]
         print(f"\nYou head to the {location_name}.")
         print("(Type 'look' to take in the room.)")
@@ -185,6 +186,7 @@ class GameEngine:
             return
 
         self.state.current_location = result
+        advance_time(self.state, 15)
         node_name = self.town.get_node(result)["name"]
         print(f"\nYou make your way to {node_name}.")
         print("(Type 'look' to take in your surroundings.)")
@@ -226,6 +228,7 @@ class GameEngine:
                 print('Bob rubs his forehead. "Good timing. I need a favor."')
                 print('He presses a wrapped parcel into your hands. "Nate\'s Codex. Get it to him at Mystic Trail."')
                 print('He pats a second Codex on the shelf. "That one can wait until you\'re really ready."')
+                run_scene_choice(self.state, "bob_codex_response")
                 print(self.objectives.set_objective(self.state, "deliver_codex"))
                 print("\n(Type 'go mystic trail' to look for Nate.)")
                 return
@@ -282,6 +285,8 @@ class GameEngine:
             lines, hint = self.dialogue.talk_to_mother(self.state)
             if not was_talked and self.state.flags["mom_talked"]:
                 print_dialogue(lines)
+                run_scene_choice(self.state, "mom_nate_response")
+                run_scene_choice(self.state, "mom_readiness_response")
                 print_hint(hint)
                 print(self.objectives.set_objective(self.state, "find_bob", added=True))
                 return
@@ -366,11 +371,11 @@ class GameEngine:
             return
         name, cost = catalog[item]
         if self.state.money < cost:
-            print(f"You only have {self.state.money} tokens. {name} costs {cost}.")
+            print(f"You only have {self.state.money} gold. {name} costs {cost} gold.")
             return
         self.state.money -= cost
         self.state.inventory.append(name)
-        print(f"You buy {name} for {cost} tokens. ({self.state.money} tokens left.)")
+        print(f"You buy {name} for {cost} gold. ({self.state.money} gold left.)")
 
     def _cmd_where(self, _arg: str) -> None:
         if not self.state.flags["in_town"]:
@@ -434,11 +439,14 @@ class GameEngine:
 
     def _cmd_inventory(self, _arg: str) -> None:
         if not self.state.inventory:
-            print(f"You're carrying nothing. Tokens: {self.state.money}")
+            print(f"You're carrying nothing. Gold: {self.state.money}")
         else:
-            print(f"You have ({self.state.money} tokens):")
+            print(f"You have ({self.state.money} gold):")
             for item in self.state.inventory:
                 print(f"  - {item}")
+
+    def _cmd_status(self, _arg: str) -> None:
+        print_status_screen(self.state, self._current_location_name())
 
     def _cmd_save(self, _arg: str) -> None:
         if not self.state.player_name:
@@ -473,6 +481,7 @@ class GameEngine:
         print("  tell me about [topic]    — natural phrasing, same as ask about")
         print("  tell mom [your plan]     — e.g. 'tell mom i'm going' to commit to leaving")
         print("  inventory (or inv)       — show what you're carrying")
+        print("  status                   — open player status hub")
         if self.state.flags["has_old_phone"]:
             print("  use phone                — open the old phone")
         if self.state.flags["phone_unlocked"]:
@@ -487,6 +496,7 @@ class GameEngine:
             print(f"Current objective: {self.state.current_objective}")
         else:
             print("No objective set.")
+        print(f"Current time: {format_time_label(self.state)}")
 
     def _cmd_quit(self, _arg: str) -> None:
         if self.state.flags["in_town"]:
@@ -570,6 +580,7 @@ class GameEngine:
 
     def _transition_to_town(self) -> None:
         """Player steps out of GP's House into town."""
+        advance_time(self.state, 10)
         print("\n" + "─" * 40)
         print(f"You open the door, {self.state.player_name}.")
         print("The street is quieter than you expected.")
@@ -601,3 +612,45 @@ class GameEngine:
         print("─" * 40)
         print(self.objectives.set_objective(self.state, "deliver_codex", added=True))
         print("\n(Type 'look' to take in the Dome. Type 'enter' or 'open door' to step inside.)")
+
+    def _show_main_menu(self) -> str:
+        """
+        Startup title + menu.
+
+        Returns:
+          - "new" for new game flow
+          - "load" when a save is loaded successfully
+          - "quit" to exit before entering the game loop
+        """
+        import os
+        from game.persistence import SAVE_FILE
+
+        print_title_screen()
+        has_save = os.path.exists(SAVE_FILE)
+        options = [
+            "NEW GAME",
+            "LOAD GAME" if has_save else "LOAD GAME (No save found)",
+            "QUIT",
+        ]
+        picked = menu_choice("Main Menu", options)
+
+        if picked == 2:
+            print("\nSee you on the road.")
+            return "quit"
+
+        if picked == 1:
+            if not has_save:
+                print("\nNo save found. Starting a new game.\n")
+                return "new"
+            ok, result = load_game()
+            if ok:
+                self.state = result
+                print(f"\nWelcome back, {self.state.player_name}.")
+                print(f"Current objective: {self.state.current_objective}")
+                print("\nType 'look' to get your bearings.")
+                return "load"
+            print(f"Could not load save: {result}")
+            print("Starting a new game instead.\n")
+            return "new"
+
+        return "new"

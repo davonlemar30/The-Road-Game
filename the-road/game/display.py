@@ -22,6 +22,7 @@ from __future__ import annotations
 import sys
 import textwrap
 import time
+from shutil import get_terminal_size
 
 # ── Box geometry (fixed at import — must never vary at runtime) ───────────────
 
@@ -289,6 +290,81 @@ def print_hint(text: str) -> None:
     """Print a compact system/prompt line with no pacing."""
     if text:
         print(text)
+
+
+def print_title_screen() -> None:
+    """Render a centered title screen."""
+    width = max(60, get_terminal_size(fallback=(80, 24)).columns)
+    title_lines = [
+        "████████╗██╗  ██╗███████╗    ██████╗  ██████╗  █████╗ ██████╗ ",
+        "╚══██╔══╝██║  ██║██╔════╝    ██╔══██╗██╔═══██╗██╔══██╗██╔══██╗",
+        "   ██║   ███████║█████╗      ██████╔╝██║   ██║███████║██║  ██║",
+        "   ██║   ██╔══██║██╔══╝      ██╔══██╗██║   ██║██╔══██║██║  ██║",
+        "   ██║   ██║  ██║███████╗    ██║  ██║╚██████╔╝██║  ██║██████╔╝",
+        "   ╚═╝   ╚═╝  ╚═╝╚══════╝    ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═════╝ ",
+        "                     Prologue: STILL HERE",
+    ]
+    print("\n" * 2)
+    for line in title_lines:
+        print(line.center(width))
+    print()
+
+
+def menu_choice(prompt: str, options: list[str]) -> int:
+    """Simple numbered menu prompt; returns selected 0-based index."""
+    print(prompt)
+    for idx, option in enumerate(options, start=1):
+        print(f"  [{idx}] {option}")
+    while True:
+        raw = input("\nSelect an option: ").strip()
+        if raw.isdigit():
+            picked = int(raw) - 1
+            if 0 <= picked < len(options):
+                return picked
+        print(f"Please enter a number from 1 to {len(options)}.")
+
+
+def print_hud(state, location_name: str) -> None:
+    """Render a compact status bar before command input."""
+    objective = state.current_objective if state.current_objective else "No objective"
+    if len(objective) > 42:
+        objective = objective[:39] + "..."
+    top = "═" * 80
+    info = (
+        f"{state.player_name or 'Unknown'}  |  {location_name}  |  "
+        f"{state.time_label}  |  Gold: {state.money}"
+    )
+    print()
+    print(top)
+    print(info)
+    print(f"Objective: {objective}")
+    print(top)
+
+
+def print_status_screen(state, location_name: str) -> None:
+    """Render a command-opened hub/status view."""
+    print("\n" + "─" * 64)
+    print("PLAYER STATUS")
+    print("─" * 64)
+    print(f"Name: {state.player_name or 'Unknown'}")
+    print(f"Location: {location_name}")
+    print(f"Time: {state.time_label}")
+    print(f"Gold: {state.money}")
+    print(f"Objective: {state.current_objective or 'No objective set'}")
+    print()
+    print("Inventory:")
+    if state.inventory:
+        for item in state.inventory:
+            print(f"  - {item}")
+    else:
+        print("  - (empty)")
+    print()
+    print("Discovered locations:")
+    if state.discovered_locations:
+        print("  - " + ", ".join(state.discovered_locations))
+    else:
+        print("  - (none yet)")
+    print("─" * 64)
 
 
 def print_choices(prompt_lines: list[str], choices: list[str]) -> int:

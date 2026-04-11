@@ -12,9 +12,15 @@ class GameState:
     running: bool = True
     current_objective: str = ""
     money: int = 12
+    day: int = 1
+    minutes_since_midnight: int = 8 * 60
     inventory: list[str] = field(default_factory=list)
     questions_asked: list[str] = field(default_factory=list)
     discovered_locations: list[str] = field(default_factory=list)
+    reputation: int = 0
+    disposition: int = 0
+    relationships: dict[str, int] = field(default_factory=lambda: {"mom": 0, "bob": 0})
+    choice_history: set[str] = field(default_factory=set)
     flags: dict[str, bool] = field(
         default_factory=lambda: {
             "met_mother": False,
@@ -30,3 +36,17 @@ class GameState:
             "phone_unlocked": False,     # Scene 4+ — phone powered on by player
         }
     )
+
+    @property
+    def time_label(self) -> str:
+        hour = self.minutes_since_midnight // 60
+        minute = self.minutes_since_midnight % 60
+        if 5 <= hour < 12:
+            block = "Morning"
+        elif 12 <= hour < 17:
+            block = "Afternoon"
+        elif 17 <= hour < 21:
+            block = "Evening"
+        else:
+            block = "Night"
+        return f"Day {self.day} • {hour:02d}:{minute:02d} ({block})"
