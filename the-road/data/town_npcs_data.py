@@ -7,7 +7,7 @@ TOWN_NPC_DIALOGUE: dict[str, dict] = {
             "She stacks a crate without looking up. Something rust-colored. Efficient hands.",
             '"You lost, or just thinking?"',
         ],
-        "hint": "(ask about: keeper  •  nate  •  market  •  trail)",
+        "hint": "",
         "topics": {
             "keeper": [
                 '"Bob? Through the Market, past the Archive, then you\'ll smell it before you see it."',
@@ -35,7 +35,7 @@ TOWN_NPC_DIALOGUE: dict[str, dict] = {
             '"Bob came through before dawn. That\'s not a man who moves early unless something needs moving."',
             '"If you\'re headed to the Dome — yeah. That\'s probably where you should be."',
         ],
-        "hint": "(ask about: bob  •  nate  •  danger  •  fence)",
+        "hint": "",
         "topics": {
             "bob": [
                 '"Been in this town forty years. Seen him move early maybe three times."',
@@ -63,7 +63,7 @@ TOWN_NPC_DIALOGUE: dict[str, dict] = {
             "A half-second pause.",
             '"If it\'s Bob — Dome is through that side door. He\'s been in since early."',
         ],
-        "hint": "(ask about: bob  •  trail  •  nate  •  ledgers)",
+        "hint": "",
         "topics": {
             "bob": [
                 '"Dome\'s adjacent. That side path."',
