@@ -6,7 +6,6 @@ from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
 from game.choices import run_scene_choice
 from game.dialogue import DialogueManager
-from game.choices import run_scene_choice
 from game.display import (
     menu_choice,
     print_dialogue,
@@ -18,7 +17,7 @@ from game.display import (
 from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
-from game.persistence import load_game, save_game
+from game.persistence import SAVE_FILE, load_game, save_game
 from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
@@ -48,6 +47,41 @@ class GameEngine:
             self._handle_command(verb, arg)
 
     # ── Startup ──────────────────────────────────────────────────────────────
+
+    def _show_main_menu(self) -> bool:
+        """
+        Display the title screen and main menu.
+        Returns True if a save was loaded (skip new-game setup).
+        Returns False to start a new game.
+        """
+        import os
+
+        print_title_screen()
+
+        save_exists = os.path.exists(SAVE_FILE)
+        options = ["New Game", "Load Game", "Quit"] if save_exists else ["New Game", "Quit"]
+
+        idx = menu_choice("", options)
+        choice = options[idx]
+
+        if choice == "Quit":
+            self.state.running = False
+            return True  # skip new-game setup; while loop exits immediately
+
+        if choice == "Load Game":
+            ok, result = load_game()
+            if ok:
+                self.state = result
+                print(f"\nWelcome back, {self.state.player_name}.")
+                print(f"Current objective: {self.state.current_objective}")
+                print("\nType 'look' to get your bearings.")
+                return True
+            else:
+                print(f"\nCould not load save: {result}")
+                print("Starting a new game instead.")
+
+        # "New Game" (or failed load)
+        return False
 
     def _show_intro(self) -> None:
         print(
