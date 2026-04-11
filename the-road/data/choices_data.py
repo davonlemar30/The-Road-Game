@@ -1,7 +1,10 @@
-"""Data-driven narrative choices for Scene 1."""
+"""Data-driven narrative choices for Scene 1.
+
+Canon reference: Scene 1 – "Still Here" (ClickUp 86b9b63au)
+"""
 
 SCENE_CHOICES = {
-    # ── Opening beat: Mom asks if you slept okay ─────────────────────────────
+    # ── Beat A: Mom asks if you slept okay ───────────────────────────────────
     "mom_sleep_response": {
         "prompt_lines": [
             "She keeps working. Glances back.",
@@ -50,11 +53,11 @@ SCENE_CHOICES = {
         ],
     },
 
-    # ── How the player responds to Mom's concern about Nate ──────────────────
+    # ── Beat B: How GP responds to Mom's concern about Nate ──────────────────
     "mom_nate_response": {
         "prompt_lines": [
             "She's watching you now.",
-            "Not pressing. Just waiting to see what you do with what she said.",
+            "Waiting to see what you do with what she said.",
         ],
         "options": [
             {
@@ -68,7 +71,8 @@ SCENE_CHOICES = {
                 },
                 "response_lines": [
                     "She nods once. Something in her face settles.",
-                    '"Thank you. That matters."',
+                    '"Good. Be careful out there."',
+                    '"Go see Bob first — he can probably point you in the right direction."',
                 ],
             },
             {
@@ -81,8 +85,10 @@ SCENE_CHOICES = {
                     "history": ["mom_nate_dismissive"],
                 },
                 "response_lines": [
-                    "Her mouth tightens, not angry — just noting it.",
-                    '"Maybe. But \'can\' and \'should\' aren\'t the same word."',
+                    "Her mouth tightens, not angry — just tired.",
+                    '"Maybe. Go see Keeper Bob."',
+                    '"If Nate\'s fine, you lose nothin\' but a walk."',
+                    '"If he ain\'t... you\'ll be glad you didn\'t wait."',
                 ],
             },
             {
@@ -95,15 +101,22 @@ SCENE_CHOICES = {
                     "history": ["mom_nate_investigative"],
                 },
                 "response_lines": [
-                    "She studies you, then nods. You asked the careful question.",
-                    '"Fair. Ask Bob direct. He\'ll tell you what he can."',
+                    "She studies you for a moment.",
+                    '"Fair."',
+                    '"He didn\'t say much to me. Just that Nate went out, and he didn\'t like the feel of it."',
+                    '"Ask Bob direct. He\'ll tell you what he can."',
                 ],
             },
         ],
     },
+
+    # ── Beat C: Optional tone cap — GP's readiness stance ────────────────────
+    # Prompt appears after the Nate discussion settles.
+    # Canon: 2 options only (receptive / hesitant_honest).
     "mom_readiness_response": {
         "prompt_lines": [
-            "She's not pressing it. Just letting it sit there between you.",
+            "She turns back to what she was doing.",
+            "But you can feel she's still listening for what you'll do next.",
         ],
         "options": [
             {
@@ -122,7 +135,7 @@ SCENE_CHOICES = {
             },
             {
                 "id": "hesitant_honest",
-                "text": "I know I'm not ready. But I'm done pretending I am.",
+                "text": "I'm just not ready yet. There's nothing out there for me.",
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 1},
@@ -130,30 +143,20 @@ SCENE_CHOICES = {
                     "history": ["mom_readiness_honest"],
                 },
                 "response_lines": [
-                    "She gives a soft, understanding nod.",
-                    '"Honest is a good place to start."',
-                ],
-            },
-            {
-                "id": "not_there_yet",
-                "text": "I hear you. I'm just not there yet.",
-                "effects": {
-                    "reputation": 0,
-                    "relationships": {"mom": -1},
-                    "disposition": 0,
-                    "history": ["mom_readiness_defensive"],
-                },
-                "response_lines": [
-                    "She gives a small nod. Not satisfied — just accepting.",
-                    '"When you are, you\'ll know it."',
+                    "Her expression stays gentle, but something in her eyes tightens.",
+                    '"You really believe that?"',
+                    '"That there\'s nothin\' out there for you?"',
+                    '"Honey... the world is yours."',
                 ],
             },
         ],
     },
+
+    # ── Bob Codex handoff choice ──────────────────────────────────────────────
     "bob_codex_response": {
         "prompt_lines": [
             "The Codex is in your hands now.",
-            "Bob is watching to see how you hold it.",
+            "Keeper Bob is watching to see how you hold it.",
         ],
         "options": [
             {
@@ -166,7 +169,7 @@ SCENE_CHOICES = {
                     "history": ["bob_codex_accept_cleanly"],
                 },
                 "response_lines": [
-                    'Bob gives one sharp nod. "Good. Direct and fast."',
+                    'Keeper Bob gives one sharp nod. "Good. Direct and fast."',
                 ],
             },
             {

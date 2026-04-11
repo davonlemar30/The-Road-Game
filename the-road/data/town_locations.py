@@ -207,7 +207,7 @@ TOWN_NODES: dict[str, dict] = {
                 "Old. Used. The stone around it is worn smooth from years of people standing there."
             ),
         },
-        "visible_npcs": ["Professor Bob (inside)"],
+        "visible_npcs": ["Keeper Bob (inside)"],
         "points_of_interest": ["Dome door", "Attunement ring", "Route map table"],
     },
 
