@@ -155,6 +155,14 @@ class DialogueManager:
         if state.flags["told_mom_plans"]:
             return ['She nods toward the door. "Go while you still mean it."'], ""
 
+        mom_rel = state.relationships.get("mom", 0)
+        if "mom_nate_dismissive" in state.choice_history or "mom_readiness_defensive" in state.choice_history:
+            return ['She folds her arms. "You\'re still deciding what kind of promise you meant."'], ""
+        if mom_rel >= 2:
+            return ['Her voice softens. "I see you trying. Keep moving."'], ""
+        if state.disposition <= -1:
+            return ['She gives you a steady look. "Careful is fine. Frozen isn\'t."'], ""
+
         return list(MOTHER_AFTER), ""
 
     def talk_to_bob(self, state) -> tuple:
@@ -177,11 +185,18 @@ class DialogueManager:
                 "(ask him about: nate  •  codex  •  trail  •  astrali  •  the field)",
             )
         if state.flags["codex_given"] and not state.flags["codex_delivered"]:
+            reminder = '"Nate needs that Codex. Get it to the overlook and come back."'
+            if "bob_codex_accept_cleanly" in state.choice_history:
+                reminder = '"You said you\'d run it over. I trust that. Go."'
+            elif "bob_codex_ask_urgency" in state.choice_history:
+                reminder = '"You wanted urgency. Here it is: every hour out there matters."'
+            elif "bob_codex_why_me" in state.choice_history:
+                reminder = '"Still wondering why you? Carry it anyway. Answers come on the road."'
             return (
                 [
                     '"You still have it."',
                     "Not accusing. Just noting.",
-                    '"Nate needs that Codex. Get it to the overlook and come back."',
+                    reminder,
                 ],
                 "",
             )

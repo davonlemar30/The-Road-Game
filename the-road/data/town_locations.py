@@ -64,7 +64,7 @@ TOWN_NODES: dict[str, dict] = {
         "aliases": {"the market", "market", "market row", "stalls", "shops"},
         "description": (
             "A covered row of stalls that smells like earth and warm bread and something "
-            "medicinal you can't place. People barter more than they spend — tokens exist "
+            "medicinal you can't place. People barter more than they spend — gold exists "
             "but trust moves faster. You don't need anything yet. But it's useful to know "
             "where things are."
         ),
@@ -75,10 +75,10 @@ TOWN_NODES: dict[str, dict] = {
                 "A stall in the corner with jars of things you half-recognize. "
                 "The person behind it clocks you, nods once, goes back to sorting leaves."
             ),
-            "tokens": "Small pressed discs with a crest stamped on them. The local exchange medium. You don't have any.",
+            "tokens": "Small pressed discs with a crest stamped on them. Local gold markers for everyday exchange. You don't have much yet.",
         },
         "visible_npcs": ["Fruit Vendor"],
-        "points_of_interest": ["Striped awning stall", "Herbalist corner", "Token board"],
+        "points_of_interest": ["Striped awning stall", "Herbalist corner", "Gold board"],
         "shops": [
             {
                 "name": "Striped Awning Stall",
