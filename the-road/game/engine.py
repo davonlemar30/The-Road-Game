@@ -141,6 +141,7 @@ class GameEngine:
             "map":       self._cmd_map,
             "use":       self._cmd_use,
             "inventory": self._cmd_inventory,
+            "log":       self._cmd_log,
             "save":      self._cmd_save,
             "load":      self._cmd_load,
             "help":      self._cmd_help,
@@ -160,7 +161,10 @@ class GameEngine:
 
     def _cmd_look(self, _arg: str) -> None:
         if self.state.flags["in_town"]:
-            self.renderer.show_system(self.town.describe(self.state.current_location))
+            # show_location clears the system buffer so the room description
+            # anchors the top of the explore region instead of appending to
+            # stale nav feedback from previous commands.
+            self.renderer.show_location(self.town.describe(self.state.current_location))
         else:
             desc = self.world.describe_location(self.state.current_location)
             # If mom is present in the living room, mention her in the look description
@@ -175,7 +179,7 @@ class GameEngine:
                 and self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is still in her chair. She gives you a look that says: go."
-            self.renderer.show_system(desc)
+            self.renderer.show_location(desc)
 
     def _cmd_go(self, arg: str) -> None:
         if self.state.flags["in_town"]:
@@ -630,6 +634,11 @@ class GameEngine:
             lines.extend(f"  - {item}" for item in self.state.inventory)
             self.renderer.show_lines(lines)
 
+    def _cmd_log(self, _arg: str) -> None:
+        """Show a modal overlay of recent exploration log entries."""
+        self.renderer.show_log_view()
+        self.renderer.invalidate_hud()
+
     def _cmd_status(self, _arg: str) -> None:
         self.renderer.show_status(self.state, self._current_location_name())
 
@@ -679,6 +688,7 @@ class GameEngine:
         if self.state.flags["phone_unlocked"]:
             lines.append("  map                      — show ISO Town map")
         lines += [
+            "  log                      — show recent exploration log",
             "  objective                — show current objective",
             "  save / load              — save or restore your progress",
             "  help                     — show this list",

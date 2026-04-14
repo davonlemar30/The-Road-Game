@@ -19,6 +19,12 @@ current screen mode.  The terminal behaves as distinct zones per mode:
         buffer AND prints immediately so the player sees output without delay.
         In non-TTY mode, output flows sequentially — no cursor tricks.
 
+        show_location() is the primary-content variant of show_system().
+        It first clears the system buffer so the room description anchors
+        the top of the explore region instead of appending to stale text.
+        This separates "where am I" (primary) from "what just happened"
+        (secondary transient feedback).
+
     dialogue
         Framed typewriter box per beat, optional choice box.
         Delegates to the existing display.py backend helpers.
@@ -26,8 +32,15 @@ current screen mode.  The terminal behaves as distinct zones per mode:
     inspect
         Labeled close-up panel for a single object or detail.
         Visually distinct from dialogue (no typewriter; labeled border).
+        Supports multi-paragraph text (paragraph breaks on blank lines).
         Blocks for Enter in TTY mode, then returns control to explore.
         In non-TTY mode, prints and continues without blocking.
+
+    log (modal overlay, not a SceneView mode)
+        Framed overlay showing recent entries from the persistent log buffer.
+        Accessible via the 'log' command.  Reuses the inspect-panel visual
+        style for consistency.  All show_system / show_location output is
+        captured in the log buffer regardless of TTY mode.
 """
 
 from __future__ import annotations
@@ -79,6 +92,12 @@ class Renderer:
         # Bounded buffer of recent system-text visual rows.
         # Each entry is one terminal line (already wrapped to terminal width).
         self._system_buffer: deque[str] = deque(maxlen=_MAX_SYSTEM_LINES)
+
+        # Persistent log of raw text passed to show_system / show_location.
+        # One entry per call, before wrapping.  Used by show_log_view().
+        # Larger capacity than _system_buffer — it's a rolling history, not
+        # a visual buffer.
+        self._log_buffer: deque[str] = deque(maxlen=200)
 
         # Total terminal lines on screen since the last render() drew
         # (HUD + system region + input).  Used for cursor-up math.
@@ -169,14 +188,23 @@ class Renderer:
             return f"│ {content:<{_CONTENT_WIDTH}} │"
 
         # ── Content rows ──────────────────────────────────────────────────────
-        wrapped = textwrap.wrap(text, width=_WRAP_WIDTH) if text else []
+        # Support multi-paragraph text for lore/note content: split on blank
+        # lines so paragraph breaks render as visual gaps inside the panel.
+        paragraphs = [p.strip() for p in text.split("\n\n")] if text else []
+        wrapped_rows: list[str] = []
+        for i, para in enumerate(paragraphs):
+            if not para:
+                continue
+            if i > 0:
+                wrapped_rows.append("")   # blank row between paragraphs
+            wrapped_rows.extend(textwrap.wrap(para, width=_WRAP_WIDTH))
 
         # ── Print panel ───────────────────────────────────────────────────────
         print()          # blank spacer above panel — never overwritten
         print(top)
         print(_row())    # top inner padding
-        for row in wrapped:
-            print(_row(f"  {row}"))
+        for row in wrapped_rows:
+            print(_row(f"  {row}" if row else ""))
         if view.footer_hint:
             print(_row())
             for row in textwrap.wrap(view.footer_hint.strip(), width=_WRAP_WIDTH):
@@ -345,7 +373,14 @@ class Renderer:
         Non-TTY mode:
           Prints immediately — no buffering needed since there are no
           cursor tricks to erase previous output.
+
+        All non-empty text is also appended to _log_buffer (raw, before
+        wrapping) so the 'log' command can show recent history.
         """
+        # Log the raw text for the transcript, regardless of TTY mode.
+        if text and text.strip():
+            self._log_buffer.append(text)
+
         if not _IS_TTY:
             print(text)
             return
@@ -356,12 +391,102 @@ class Renderer:
             print(row)
             self._lines_on_screen += 1
 
+    def show_location(self, text: str) -> None:
+        """
+        Display a room or location description as primary explore content.
+
+        Unlike show_system(), this first clears the system buffer so the
+        location description anchors the top of the explore display region.
+        Subsequent show_system() calls then append navigation feedback below.
+
+        Use this for 'look' output.  Use show_system() for transient
+        feedback (travel messages, errors, objective updates, etc.).
+        """
+        # Clear stale system messages — location description is the new anchor.
+        # _lines_on_screen is preserved so the next render() can cursor-up
+        # the correct amount and erase the old frame before redrawing.
+        self._system_buffer.clear()
+        self.show_system(text)
+
     def show_lines(self, lines: list[str]) -> None:
         """
         Emit a sequence of engine feedback lines, preserving order.
         """
         for line in lines:
             self.show_system(line)
+
+    def show_log_view(self) -> None:
+        """
+        Show a framed modal overlay of recent exploration log entries.
+
+        Pulls from _log_buffer (raw text, one entry per show_system /
+        show_location call) and renders the most recent content inside an
+        inspect-style panel.  Blocks for Enter in TTY mode.
+
+        In non-TTY mode, prints a plain list without framing.
+        """
+        _PANEL_WIDTH: int = 80
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
+        _MAX_VISIBLE: int = 22                   # max content rows shown
+
+        entries = list(self._log_buffer)
+
+        if not _IS_TTY:
+            # Non-TTY: simple unframed output
+            print("\n--- Recent Log ---")
+            for entry in entries[-20:]:
+                if entry and entry.strip():
+                    print(entry)
+            print("--- End ---\n")
+            return
+
+        # Build wrapped rows from all log entries (oldest → newest).
+        # Each entry is separated by a blank row so chunks stay readable.
+        all_rows: list[str] = []
+        for entry in entries:
+            if not entry or not entry.strip():
+                continue
+            for row in textwrap.wrap(entry, width=_WRAP_WIDTH):
+                all_rows.append(row)
+            all_rows.append("")   # blank separator between log entries
+
+        # Take the most recent rows (tail of the list).
+        visible = all_rows[-_MAX_VISIBLE:] if len(all_rows) > _MAX_VISIBLE else all_rows
+        # Drop leading blank rows that result from the tail slice.
+        while visible and not visible[0].strip():
+            visible = visible[1:]
+
+        # ── Panel borders ──────────────────────────────────────────────────────
+        label = "[ Recent Log ]"
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
+
+        def _row(content: str = "") -> str:
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        # ── Print panel ────────────────────────────────────────────────────────
+        print()
+        print(top)
+        print(_row())
+        if not visible:
+            print(_row("  (no recent activity)"))
+        else:
+            for r in visible:
+                print(_row(f"  {r}" if r.strip() else ""))
+        print(_row())
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+        # Cursor position is now unknown — force a clean explore redraw.
+        self._hud_drawn = False
+        self._system_buffer.clear()
 
     # ── Input ─────────────────────────────────────────────────────────────────
 
