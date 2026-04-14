@@ -15,6 +15,7 @@ from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
 from game.ui import Renderer
+from game.ui.view_models import HudData, SceneView
 from game.world import World
 
 
@@ -36,7 +37,8 @@ class GameEngine:
             self.renderer.show_system("\nType 'look' to take in your room.")
 
         while self.state.running:
-            self._render_hud()
+            view = self._build_view()
+            self.renderer.render(view)
             raw = self.renderer.get_input()
             verb, arg = parse_command(raw)
             self._handle_command(verb, arg)
@@ -84,9 +86,20 @@ class GameEngine:
             "waiting for movement to become a decision."
         )
 
-    def _render_hud(self) -> None:
+    def _build_view(self) -> SceneView:
+        """Build a SceneView snapshot from the current runtime state."""
         location_name = self._current_location_name()
-        self.renderer.show_hud(self.state, location_name)
+        return SceneView(
+            current_mode="explore",
+            location_name=location_name,
+            hud=HudData(
+                player_name=self.state.player_name,
+                location_name=location_name,
+                time_label=self.state.time_label,
+                money=self.state.money,
+                objective=self.state.current_objective,
+            ),
+        )
 
     def _current_location_name(self) -> str:
         if self.state.flags["in_town"]:
@@ -320,6 +333,7 @@ class GameEngine:
                     ],
                 )
                 session.run(self.state)
+                self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "deliver_codex", added=True)
                 )
@@ -341,6 +355,7 @@ class GameEngine:
                         '"Come back after and we finish this."',
                     ])],
                 ).run(self.state)
+                self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "mom_blessing")
                 )
@@ -358,6 +373,7 @@ class GameEngine:
                         '"The other one already knows you\'re here."',
                     ])],
                 ).run(self.state)
+                self.renderer.invalidate_hud()
                 self.renderer.show_system("(Astari selection coming in the next build.)")
             else:
                 DialogueSession(
@@ -367,6 +383,7 @@ class GameEngine:
                         '"When you\'ve had that talk at home, come back. Not before."',
                     ])],
                 ).run(self.state)
+                self.renderer.invalidate_hud()
             return
 
         # Generic response for other locations
@@ -412,6 +429,7 @@ class GameEngine:
                     closing_hint="She's here if there's more on your mind.",
                 )
                 session.run(self.state)
+                self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "find_bob", added=True)
                 )
@@ -425,6 +443,7 @@ class GameEngine:
                     closing_hint=hint,
                 )
                 session.run(self.state)
+                self.renderer.invalidate_hud()
             elif hint:
                 self.renderer.show_hint(hint)
             return
@@ -443,6 +462,7 @@ class GameEngine:
                 closing_hint=hint,
             )
             session.run(self.state)
+            self.renderer.invalidate_hud()
         elif hint:
             self.renderer.show_hint(hint)
 

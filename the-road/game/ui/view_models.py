@@ -4,9 +4,11 @@ View models for The Road presentation layer.
 A SceneView is the minimal structured description of what the screen should
 display at any given moment.  The engine produces it; the Renderer consumes it.
 
-Current status (Task 1 — scaffold only):
-    SceneView is defined but not yet produced by the engine.  Task 2 will add
-    engine methods that populate a SceneView and pass it to Renderer.render().
+Status (Task 3 — active):
+    The engine builds a SceneView each main-loop iteration via _build_view().
+    Renderer.render(view) consumes it to draw an anchored HUD in explore mode.
+    Other modes (dialogue, menu) still use direct Renderer method calls as
+    compatibility paths — migration is planned for future tasks.
 
 Design intent:
     - Engine logic and narrative content never touch terminal output directly.
@@ -50,13 +52,12 @@ class SceneView:
     portrait_id         Reserved for a future ASCII portrait lookup key.
     dialogue_lines      Lines to pass to print_dialogue / Renderer.show_dialogue.
     current_choices     Option strings for the choice box (dialogue mode).
-    hud                 Extracted HUD data; None means don't redraw the HUD.
+    hud                 Extracted HUD data; None suppresses HUD redraw.
     footer_hint         Closing hint printed below the last dialogue beat.
     input_prompt        Prompt string shown before the command cursor.
     system_lines        Transient engine feedback lines (navigation, errors, etc.)
-                        These are the raw print() calls in engine.py today.
-                        In a fixed-screen renderer they will go into a scroll
-                        region rather than flowing past the HUD.
+                        In explore mode these are flushed into the system-text
+                        region below the HUD.
     """
 
     current_mode: str = "explore"   # "explore" | "dialogue" | "inspect" | "menu"
