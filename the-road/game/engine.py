@@ -247,10 +247,18 @@ class GameEngine:
         if not arg:
             self.renderer.show_system("Inspect what? (example: inspect mirror)")
             return
+
         if self.state.flags["in_town"]:
-            self.renderer.show_system(self.town.inspect(self.state.current_location, arg))
+            result = self.town.inspect(self.state.current_location, arg)
         else:
-            self.renderer.show_system(self.world.inspect(self.state.current_location, arg))
+            result = self.world.inspect(self.state.current_location, arg)
+
+        self.renderer.render(SceneView(
+            current_mode="inspect",
+            inspect_target=arg.strip(),
+            inspect_text=result,
+        ))
+        self.renderer.invalidate_hud()
 
     def _cmd_enter(self, arg: str) -> None:
         """Handle 'enter', 'open door', 'knock', 'go inside' in town."""

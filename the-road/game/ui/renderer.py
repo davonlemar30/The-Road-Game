@@ -1,10 +1,10 @@
 """
 Renderer — the single choke point between game logic and terminal output.
 
-Status (Task 4 — dialogue-mode scene path):
-    Renderer.render(view: SceneView) draws an anchored HUD followed by a
-    bounded system-text region.  The terminal now behaves as three zones:
+Renderer.render(view: SceneView) draws one complete frame based on the
+current screen mode.  The terminal behaves as distinct zones per mode:
 
+    explore
         ┌──────────────────────────┐
         │  HUD (5 lines, stable)   │
         ├──────────────────────────┤
@@ -14,17 +14,20 @@ Status (Task 4 — dialogue-mode scene path):
         ├──────────────────────────┤
         │  > input prompt          │
         └──────────────────────────┘
+        In TTY mode, render() uses cursor-up + erase-to-end to redraw the
+        HUD and system region in place.  show_system() appends to a deque
+        buffer AND prints immediately so the player sees output without delay.
+        In non-TTY mode, output flows sequentially — no cursor tricks.
 
-    In TTY mode, render() uses cursor-up + erase-to-end to redraw the HUD
-    and system region in place.  show_system() appends to a deque buffer
-    AND prints immediately so the player sees output without delay.
+    dialogue
+        Framed typewriter box per beat, optional choice box.
+        Delegates to the existing display.py backend helpers.
 
-    In non-TTY mode (CI, piped), output flows sequentially — no cursor
-    tricks, no buffering.
-
-    Dialogue mode now has a SceneView path as well.  Renderer.render(view)
-    supports current_mode == "dialogue" and delegates to the existing
-    display.py backend helpers for framed typewriter text and choices.
+    inspect
+        Labeled close-up panel for a single object or detail.
+        Visually distinct from dialogue (no typewriter; labeled border).
+        Blocks for Enter in TTY mode, then returns control to explore.
+        In non-TTY mode, prints and continues without blocking.
 """
 
 from __future__ import annotations
@@ -94,7 +97,7 @@ class Renderer:
         Dispatches on view.current_mode.
 
         Returns:
-            None for non-interactive modes (e.g., explore),
+            None for non-interactive modes (explore, inspect),
             selected choice index for dialogue choice frames.
         """
         if view.current_mode == "explore":
@@ -102,6 +105,9 @@ class Renderer:
             return None
         if view.current_mode == "dialogue":
             return self._render_dialogue(view)
+        if view.current_mode == "inspect":
+            self._render_inspect(view)
+            return None
         return None
 
     def _render_dialogue(self, view: SceneView) -> int | None:
@@ -119,6 +125,75 @@ class Renderer:
         if view.footer_hint:
             self.show_hint(view.footer_hint)
         return selected_idx
+
+    def _render_inspect(self, view: SceneView) -> None:
+        """
+        Inspect-mode frame: labeled close-up panel with wrapped detail text.
+
+        Layout (80 chars wide):
+
+            ┌─[ Object Name ]──────────────────────────────────────────────────────────┐
+            │                                                                          │
+            │  Detailed description text, word-wrapped with a two-space indent.        │
+            │                                                                          │
+            │  ■ Enter                                                                 │
+            └──────────────────────────────────────────────────────────────────────────┘
+
+        Visually distinct from dialogue: no typewriter animation, labeled top
+        border, static single-frame render.
+
+        In TTY mode: blocks for Enter before returning so the player can read
+        at their own pace.  The next explore render redraws cleanly after.
+        In non-TTY mode: prints immediately and returns without blocking.
+        """
+        _PANEL_WIDTH: int = 80
+        # Inner content area between "│ " (2 chars) and " │" (2 chars).
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        # Wrap text 2 chars narrower than the content area to allow a visual
+        # two-space indent that sets inspect detail apart from the border.
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
+
+        target = (view.inspect_target or "Detail").strip()
+        text   = (view.inspect_text   or "").strip()
+
+        # ── Borders ───────────────────────────────────────────────────────────
+        label = f"[ {target.title()} ]"
+        # ┌─{label}{fill dashes}┐ must total exactly _PANEL_WIDTH chars:
+        #   1 (┌) + 1 (─) + len(label) + fill + 1 (┐) = 80  →  fill = 77 - len(label)
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
+
+        def _row(content: str = "") -> str:
+            """One 80-char content row: border + space + padded content + border."""
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        # ── Content rows ──────────────────────────────────────────────────────
+        wrapped = textwrap.wrap(text, width=_WRAP_WIDTH) if text else []
+
+        # ── Print panel ───────────────────────────────────────────────────────
+        print()          # blank spacer above panel — never overwritten
+        print(top)
+        print(_row())    # top inner padding
+        for row in wrapped:
+            print(_row(f"  {row}"))
+        if view.footer_hint:
+            print(_row())
+            for row in textwrap.wrap(view.footer_hint.strip(), width=_WRAP_WIDTH):
+                print(_row(f"  {row}"))
+        print(_row())    # bottom inner padding
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        if _IS_TTY:
+            try:
+                input()  # block for Enter; echoes one newline — HUD invalidation handles cleanup
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+        # Cursor position is now unknown — force a clean explore redraw next frame.
+        self._hud_drawn = False
+        self._system_buffer.clear()
 
     def _render_explore(self, view: SceneView) -> None:
         """
