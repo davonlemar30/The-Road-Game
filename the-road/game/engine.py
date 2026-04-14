@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
-from game.choices import run_scene_choice
 from game.dialogue import DialogueManager
 from game.dialogue_session import Beat, DialogueSession
 from game.map_renderer import render_map
@@ -332,7 +331,7 @@ class GameEngine:
                         ),
                     ],
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "deliver_codex", added=True)
@@ -354,7 +353,7 @@ class GameEngine:
                         '"She already suspects. Don\'t let her sit with that."',
                         '"Come back after and we finish this."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "mom_blessing")
@@ -372,7 +371,7 @@ class GameEngine:
                         '"Pick the one that picks you. That\'s always been my advice."',
                         '"The other one already knows you\'re here."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system("(Astari selection coming in the next build.)")
             else:
@@ -382,7 +381,7 @@ class GameEngine:
                         "Keeper Bob looks up when you come in.",
                         '"When you\'ve had that talk at home, come back. Not before."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             return
 
@@ -428,7 +427,7 @@ class GameEngine:
                     ],
                     closing_hint="She's here if there's more on your mind.",
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "find_bob", added=True)
@@ -442,7 +441,7 @@ class GameEngine:
                     beats=[Beat(lines=lines)],
                     closing_hint=hint,
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             elif hint:
                 self.renderer.show_hint(hint)
@@ -461,7 +460,7 @@ class GameEngine:
                 beats=[Beat(lines=lines)],
                 closing_hint=hint,
             )
-            session.run(self.state)
+            session.run(self.state, self.renderer)
             self.renderer.invalidate_hud()
         elif hint:
             self.renderer.show_hint(hint)
