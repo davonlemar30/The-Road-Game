@@ -117,7 +117,7 @@ class DialogueSession:
         (run_scene_choice returns None and we skip them).
         """
         if renderer is not None:
-            renderer.show_dialogue_header(self.npc_name)
+            renderer.begin_dialogue_session(self.npc_name)
         else:
             _npc_header(self.npc_name)
 
@@ -153,7 +153,7 @@ class DialogueSession:
                 print_hint(self.closing_hint)
 
         if renderer is not None:
-            renderer.show_dialogue_footer()
+            renderer.end_dialogue_session()
         else:
             _npc_footer()
         return results

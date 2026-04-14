@@ -444,7 +444,7 @@ class GameEngine:
                 session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             elif hint:
-                self.renderer.show_hint(hint)
+                self.renderer.render(SceneView(current_mode="dialogue", footer_hint=hint))
             return
 
         elif npc_id == "bob":
@@ -463,7 +463,7 @@ class GameEngine:
             session.run(self.state, self.renderer)
             self.renderer.invalidate_hud()
         elif hint:
-            self.renderer.show_hint(hint)
+            self.renderer.render(SceneView(current_mode="dialogue", footer_hint=hint))
 
     def _cmd_ask(self, arg: str) -> None:
         trimmed = arg.strip().lower()
@@ -482,9 +482,12 @@ class GameEngine:
                     lines, hint = self.dialogue.ask_bob(self.state, topic)
                 else:
                     lines, hint = self.dialogue.ask_town_npc(target, topic)
-                if lines:
-                    self.renderer.show_dialogue(lines)
-                self.renderer.show_hint(hint)
+                if lines or hint:
+                    self.renderer.render(SceneView(
+                        current_mode="dialogue",
+                        dialogue_lines=lines or [],
+                        footer_hint=hint or "",
+                    ))
                 return
             self.renderer.show_system("Ask who about that? (example: ask mom about bob)")
             return
@@ -508,9 +511,12 @@ class GameEngine:
             lines, hint = self.dialogue.ask_bob(self.state, topic)
         else:
             lines, hint = self.dialogue.ask_town_npc(npc_id, topic)
-        if lines:
-            self.renderer.show_dialogue(lines)
-        self.renderer.show_hint(hint)
+        if lines or hint:
+            self.renderer.render(SceneView(
+                current_mode="dialogue",
+                dialogue_lines=lines or [],
+                footer_hint=hint or "",
+            ))
 
     def _cmd_browse(self, arg: str) -> None:
         if not self.state.flags["in_town"]:
@@ -717,9 +723,12 @@ class GameEngine:
             lines, hint = self.dialogue.ask_bob(self.state, full_input)
         else:
             lines, hint = self.dialogue.ask_town_npc(npc_id, full_input)
-        if lines:
-            self.renderer.show_dialogue(lines)
-        self.renderer.show_hint(hint)
+        if lines or hint:
+            self.renderer.render(SceneView(
+                current_mode="dialogue",
+                dialogue_lines=lines or [],
+                footer_hint=hint or "",
+            ))
 
     # ── Location events ───────────────────────────────────────────────────────
 
@@ -799,13 +808,16 @@ class GameEngine:
 
     def _scene2_hook(self) -> None:
         """Scene 2 intro event when player first arrives at The Keeper's Dome."""
-        self.renderer.show_dialogue([
-            "The Keeper's Dome sits low and round, set back from the street like it was built to listen more than be seen.",
-            "The door is half-open. Voices carry through the gap — low, controlled.",
-            "The kind of conversation that doesn't need to be loud to have weight.",
-            "You step closer.",
-            '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
-        ])
+        self.renderer.render(SceneView(
+            current_mode="dialogue",
+            dialogue_lines=[
+                "The Keeper's Dome sits low and round, set back from the street like it was built to listen more than be seen.",
+                "The door is half-open. Voices carry through the gap — low, controlled.",
+                "The kind of conversation that doesn't need to be loud to have weight.",
+                "You step closer.",
+                '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
+            ],
+        ))
         self.renderer.show_system(
             self.objectives.set_objective(self.state, "enter_dome", added=True)
         )

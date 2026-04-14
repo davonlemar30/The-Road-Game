@@ -222,16 +222,18 @@ class Renderer:
         self._hud_drawn = False
         return result
 
-    def show_dialogue_header(self, speaker_name: str) -> None:
-        """Render the opening NPC dialogue rule line."""
+    def begin_dialogue_session(self, speaker_name: str) -> None:
+        """Open a dialogue session: print the NPC rule line and mark HUD dirty."""
         line_width = 80
         prefix = f"─── {speaker_name} "
         remaining = max(0, line_width - len(prefix))
         print(f"\n{prefix}{'─' * remaining}")
+        self._hud_drawn = False
 
-    def show_dialogue_footer(self) -> None:
-        """Render the closing NPC dialogue rule line."""
+    def end_dialogue_session(self) -> None:
+        """Close a dialogue session: print the footer rule line and mark HUD dirty."""
         print("─" * 80)
+        self._hud_drawn = False
 
     # ── System / explore mode ─────────────────────────────────────────────────
 
