@@ -1,7 +1,7 @@
 """
 Renderer — the single choke point between game logic and terminal output.
 
-Status (Task 3 fix — bounded system-text region):
+Status (Task 4 — dialogue-mode scene path):
     Renderer.render(view: SceneView) draws an anchored HUD followed by a
     bounded system-text region.  The terminal now behaves as three zones:
 
@@ -22,8 +22,9 @@ Status (Task 3 fix — bounded system-text region):
     In non-TTY mode (CI, piped), output flows sequentially — no cursor
     tricks, no buffering.
 
-    Dialogue sessions call display.py directly (unchanged) and invalidate
-    the HUD via invalidate_hud() so the next render() starts clean.
+    Dialogue mode now has a SceneView path as well.  Renderer.render(view)
+    supports current_mode == "dialogue" and delegates to the existing
+    display.py backend helpers for framed typewriter text and choices.
 """
 
 from __future__ import annotations
@@ -86,16 +87,38 @@ class Renderer:
 
     # ── SceneView dispatch ────────────────────────────────────────────────────
 
-    def render(self, view: SceneView) -> None:
+    def render(self, view: SceneView) -> int | None:
         """
         Draw the screen based on a SceneView snapshot.
 
-        Dispatches on view.current_mode.  Currently only 'explore' has a
-        real implementation; other modes are stubs that will be filled in
-        by future tasks.
+        Dispatches on view.current_mode.
+
+        Returns:
+            None for non-interactive modes (e.g., explore),
+            selected choice index for dialogue choice frames.
         """
         if view.current_mode == "explore":
             self._render_explore(view)
+            return None
+        if view.current_mode == "dialogue":
+            return self._render_dialogue(view)
+        return None
+
+    def _render_dialogue(self, view: SceneView) -> int | None:
+        """
+        Dialogue-mode frame routed through SceneView state.
+
+        The actual framing/typewriter behavior still lives in display.py.
+        This method simply maps SceneView fields onto renderer methods.
+        """
+        selected_idx: int | None = None
+        if view.dialogue_lines:
+            self.show_dialogue(view.dialogue_lines)
+        if view.current_choices:
+            selected_idx = self.show_choices(view.choice_prompt_lines, view.current_choices)
+        if view.footer_hint:
+            self.show_hint(view.footer_hint)
+        return selected_idx
 
     def _render_explore(self, view: SceneView) -> None:
         """
@@ -198,6 +221,17 @@ class Renderer:
         result = _print_choices(prompt_lines, choices)
         self._hud_drawn = False
         return result
+
+    def show_dialogue_header(self, speaker_name: str) -> None:
+        """Render the opening NPC dialogue rule line."""
+        line_width = 80
+        prefix = f"─── {speaker_name} "
+        remaining = max(0, line_width - len(prefix))
+        print(f"\n{prefix}{'─' * remaining}")
+
+    def show_dialogue_footer(self) -> None:
+        """Render the closing NPC dialogue rule line."""
+        print("─" * 80)
 
     # ── System / explore mode ─────────────────────────────────────────────────
 

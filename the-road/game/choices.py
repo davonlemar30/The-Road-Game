@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from data.choices_data import SCENE_CHOICES
 from game.display import print_choices, print_dialogue
+from game.ui.view_models import SceneView
 
 
 def apply_choice_effects(state, effects: dict) -> None:
@@ -18,7 +19,7 @@ def apply_choice_effects(state, effects: dict) -> None:
         state.choice_history.add(marker)
 
 
-def run_scene_choice(state, choice_id: str) -> str | None:
+def run_scene_choice(state, choice_id: str, renderer=None) -> str | None:
     """
     Render a formal choice prompt, gather numeric input, apply hidden effects,
     and show optional follow-up lines.
@@ -41,7 +42,17 @@ def run_scene_choice(state, choice_id: str) -> str | None:
     option_texts = [opt["text"] for opt in options]
 
     # Unified display: prompt + numbered choices in one framed box.
-    idx = print_choices(prompt_lines, option_texts)
+    if renderer is not None:
+        choice_view = SceneView(
+            current_mode="dialogue",
+            current_choices=option_texts,
+            choice_prompt_lines=prompt_lines,
+        )
+        idx = renderer.render(choice_view)
+        if idx is None:
+            return None
+    else:
+        idx = print_choices(prompt_lines, option_texts)
     selected = options[idx]
 
     apply_choice_effects(state, selected.get("effects", {}))
@@ -49,6 +60,14 @@ def run_scene_choice(state, choice_id: str) -> str | None:
 
     response_lines = selected.get("response_lines", [])
     if response_lines:
-        print_dialogue(response_lines)
+        if renderer is not None:
+            renderer.render(
+                SceneView(
+                    current_mode="dialogue",
+                    dialogue_lines=response_lines,
+                )
+            )
+        else:
+            print_dialogue(response_lines)
 
     return selected.get("id")
