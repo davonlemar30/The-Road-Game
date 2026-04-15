@@ -1,7 +1,7 @@
 """
 Renderer — the single choke point between game logic and terminal output.
 
-Status (Task 3 fix — bounded system-text region):
+Status (Task 6 — portraits + threat shell scaffold):
     Renderer.render(view: SceneView) draws an anchored HUD followed by a
     bounded system-text region.  The terminal now behaves as three zones:
 
@@ -22,8 +22,9 @@ Status (Task 3 fix — bounded system-text region):
     In non-TTY mode (CI, piped), output flows sequentially — no cursor
     tricks, no buffering.
 
-    Dialogue sessions call display.py directly (unchanged) and invalidate
-    the HUD via invalidate_hud() so the next render() starts clean.
+    Dialogue mode has a SceneView path and now supports optional portraits.
+    Task 6 also adds a renderer-backed "threat" mode shell (UI scaffold only)
+    for future combat work.
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ from game.display import (
     print_status_screen as _print_status_screen,
     print_title_screen as _print_title_screen,
 )
+from game.ui.portraits import get_portrait
 from game.ui.view_models import HudData, SceneView
 
 # ── HUD geometry ─────────────────────────────────────────────────────────────
@@ -57,6 +59,8 @@ _HUD_HEIGHT: int = 5
 # Maximum number of visual rows kept in the system-text buffer.
 # This bounds the scroll region so it doesn't grow unbounded.
 _MAX_SYSTEM_LINES: int = 14
+_DIALOGUE_WIDTH: int = 78
+_DIALOGUE_CONTENT_WIDTH: int = _DIALOGUE_WIDTH - 4
 
 
 class Renderer:
@@ -84,18 +88,94 @@ class Renderer:
         # The very first frame cannot cursor-up (there is nothing above).
         self._hud_drawn: bool = False
 
+        # Session-aware dialogue viewport state.
+        self._dialogue_session_active: bool = False
+        self._dialogue_frame_lines: int = 0
+        self._dialogue_tail_lines: int = 0
+
     # ── SceneView dispatch ────────────────────────────────────────────────────
 
-    def render(self, view: SceneView) -> None:
+    def render(self, view: SceneView) -> int | None:
         """
         Draw the screen based on a SceneView snapshot.
 
-        Dispatches on view.current_mode.  Currently only 'explore' has a
-        real implementation; other modes are stubs that will be filled in
-        by future tasks.
+        Dispatches on view.current_mode.
+
+        Returns:
+            None for non-interactive modes (e.g., explore),
+            selected choice index for dialogue choice frames.
         """
         if view.current_mode == "explore":
             self._render_explore(view)
+            return None
+        if view.current_mode == "dialogue":
+            return self._render_dialogue(view)
+        if view.current_mode == "threat":
+            self._render_threat(view)
+            return None
+        return None
+
+    def _render_dialogue(self, view: SceneView) -> int | None:
+        """
+        Dialogue-mode frame routed through SceneView state.
+
+        The actual framing/typewriter behavior still lives in display.py.
+        This method simply maps SceneView fields onto renderer methods.
+        """
+        selected_idx: int | None = None
+        if view.portrait_id and not self._dialogue_session_active:
+            self.show_portrait(view.portrait_id, label=view.speaker_name or "Portrait")
+        if view.dialogue_lines:
+            if self._dialogue_session_active:
+                self._session_show_dialogue(view.dialogue_lines)
+            else:
+                self.show_dialogue(view.dialogue_lines)
+        if view.current_choices:
+            if self._dialogue_session_active:
+                selected_idx = self._session_show_choices(view.choice_prompt_lines, view.current_choices)
+            else:
+                selected_idx = self.show_choices(view.choice_prompt_lines, view.current_choices)
+        if view.footer_hint:
+            if self._dialogue_session_active:
+                self._session_show_dialogue([view.footer_hint], marker="■ Enter")
+            else:
+                self.show_hint(view.footer_hint)
+        return selected_idx
+
+    def _render_threat(self, view: SceneView) -> None:
+        """
+        Threat/combat presentation scaffold.
+
+        This is intentionally UI-only for now: no combat rules, no stateful
+        turn system. It simply renders a stable shell the future combat loop
+        can target.
+        """
+        self.invalidate_hud()
+        title = view.threat_name or "Unknown Threat"
+        bar = "═" * 80
+        print(f"\n{bar}")
+        print(f"THREAT MODE: {title}")
+        print(bar)
+
+        if view.portrait_id:
+            self.show_portrait(view.portrait_id, label=title)
+
+        if view.threat_lines:
+            print("\nEncounter:")
+            for line in view.threat_lines:
+                print(f"  {line}")
+
+        if view.player_status_lines:
+            print("\nYou:")
+            for line in view.player_status_lines:
+                print(f"  - {line}")
+
+        if view.combat_actions:
+            print("\nActions:")
+            for idx, action in enumerate(view.combat_actions, start=1):
+                print(f"  {idx}. {action}")
+
+        print("\n(Threat shell only — full combat rules are not implemented yet.)")
 
     def _render_explore(self, view: SceneView) -> None:
         """
@@ -199,6 +279,120 @@ class Renderer:
         self._hud_drawn = False
         return result
 
+    def show_dialogue_header(self, speaker_name: str, portrait_id: str = "") -> None:
+        """Render the opening NPC dialogue rule line."""
+        self.begin_dialogue_session(speaker_name, portrait_id=portrait_id)
+
+    def show_dialogue_footer(self) -> None:
+        """Render the closing NPC dialogue rule line."""
+        self.end_dialogue_session()
+
+    def begin_dialogue_session(self, speaker_name: str, portrait_id: str = "") -> None:
+        """Activate anchored dialogue viewport and print session header once."""
+        self._dialogue_session_active = True
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0
+        if portrait_id:
+            self.show_portrait(portrait_id, label=speaker_name)
+        line_width = 80
+        prefix = f"─── {speaker_name} "
+        remaining = max(0, line_width - len(prefix))
+        print(f"\n{prefix}{'─' * remaining}")
+
+    def end_dialogue_session(self) -> None:
+        """Print footer and reset anchored dialogue viewport state."""
+        print("─" * 80)
+        self._dialogue_session_active = False
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0
+
+    def show_portrait(self, portrait_id: str, label: str = "Portrait") -> None:
+        """
+        Print a compact text portrait block.
+
+        Terminal limitation: this is plain mono-text and intentionally small;
+        no color/positioning assumptions are made.
+        """
+        portrait = get_portrait(portrait_id)
+        if portrait is None:
+            print(f"[{label} portrait unavailable: {portrait_id}]")
+            return
+        for line in portrait:
+            print(line)
+
+    def _dialogue_rows(self, lines: list[str]) -> list[str]:
+        rows: list[str] = []
+        for line in lines:
+            if not line.strip():
+                rows.append("")
+            else:
+                rows.extend(
+                    textwrap.wrap(line.strip(), width=_DIALOGUE_CONTENT_WIDTH)
+                    or [""]
+                )
+        return rows or [""]
+
+    def _session_draw_frame(self, rows: list[str], marker: str) -> None:
+        if not _IS_TTY:
+            print()
+            top = "┌" + "─" * (_DIALOGUE_WIDTH - 2) + "┐"
+            bot = "└" + "─" * (_DIALOGUE_WIDTH - 2) + "┘"
+            print(top)
+            for row in rows:
+                print(f"│ {row:<{_DIALOGUE_CONTENT_WIDTH}} │")
+            print(f"│ {'  ' + marker:<{_DIALOGUE_CONTENT_WIDTH}} │")
+            print(bot)
+            return
+
+        total_prev = self._dialogue_frame_lines + self._dialogue_tail_lines
+        if total_prev > 0:
+            sys.stdout.write(f"\033[{total_prev}A\r")
+            sys.stdout.write("\033[J")
+            sys.stdout.flush()
+
+        top = "┌" + "─" * (_DIALOGUE_WIDTH - 2) + "┐"
+        bot = "└" + "─" * (_DIALOGUE_WIDTH - 2) + "┘"
+        frame_lines = [top]
+        frame_lines.extend(f"│ {row:<{_DIALOGUE_CONTENT_WIDTH}} │" for row in rows)
+        frame_lines.append(f"│ {'  ' + marker:<{_DIALOGUE_CONTENT_WIDTH}} │")
+        frame_lines.append(bot)
+        for line in frame_lines:
+            print(line)
+        self._dialogue_frame_lines = len(frame_lines)
+        self._dialogue_tail_lines = 0
+
+    def _session_show_dialogue(self, lines: list[str], marker: str = "■ Enter") -> None:
+        rows = self._dialogue_rows(lines)
+        self._session_draw_frame(rows, marker=marker)
+
+        if not _IS_TTY:
+            return
+        input("  > ")
+        self._dialogue_tail_lines = 1
+
+    def _session_show_choices(self, prompt_lines: list[str], choices: list[str]) -> int:
+        rows = self._dialogue_rows(prompt_lines)
+        if rows and rows != [""]:
+            rows.append("")
+        for i, choice in enumerate(choices, 1):
+            rows.extend(self._dialogue_rows([f"[{i}]  {choice}"]))
+
+        self._session_draw_frame(rows, marker="◆ Choose")
+
+        tail = 0
+        while True:
+            raw = input("  > ").strip()
+            tail += 1
+            try:
+                idx = int(raw) - 1
+                if 0 <= idx < len(choices):
+                    self._dialogue_tail_lines = tail
+                    return idx
+            except ValueError:
+                pass
+            print(f"  (Enter a number from 1 to {len(choices)}.)")
+            tail += 1
+
     # ── System / explore mode ─────────────────────────────────────────────────
 
     def _wrap_to_terminal(self, text: str) -> list[str]:
@@ -294,3 +488,6 @@ class Renderer:
         """
         self._hud_drawn = False
         self._system_buffer.clear()
+        self._dialogue_session_active = False
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0

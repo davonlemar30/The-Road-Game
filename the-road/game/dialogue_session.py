@@ -14,7 +14,7 @@ Usage
         ],
         closing_hint="She's here if there's more on your mind.",
     )
-    session.run(state)
+    session.run(state, renderer)
 
 Visual output
 ─────────────
@@ -38,11 +38,10 @@ from __future__ import annotations
 
 from game.choices import run_scene_choice
 from game.display import print_dialogue, print_hint
+from game.ui.view_models import SceneView
 
 _LINE_WIDTH: int = 80
 
-
-# ── Visual helpers ────────────────────────────────────────────────────────────
 
 def _npc_header(npc_name: str) -> None:
     """Print the opening rule line with the NPC name embedded."""
@@ -93,6 +92,7 @@ class DialogueSession:
     closing_hint    Optional plain-text hint printed below the last beat,
                     before the footer rule.  Use for parser nudges
                     (e.g. "She's here if there's more on your mind.").
+    portrait_id     Optional lookup key for renderer portrait placeholders.
     """
 
     def __init__(
@@ -100,12 +100,14 @@ class DialogueSession:
         npc_name: str,
         beats: list[Beat],
         closing_hint: str = "",
+        portrait_id: str = "",
     ) -> None:
         self.npc_name = npc_name
         self.beats = beats
         self.closing_hint = closing_hint
+        self.portrait_id = portrait_id
 
-    def run(self, state) -> dict[str, str]:
+    def run(self, state, renderer=None) -> dict[str, str]:
         """
         Execute the full session.
 
@@ -117,20 +119,44 @@ class DialogueSession:
         already in state.choice_history produce no entry in the dict
         (run_scene_choice returns None and we skip them).
         """
-        _npc_header(self.npc_name)
+        if renderer is not None:
+            renderer.show_dialogue_header(self.npc_name, portrait_id=self.portrait_id)
+        else:
+            _npc_header(self.npc_name)
 
         results: dict[str, str] = {}
 
         for beat in self.beats:
             if beat.lines:
-                print_dialogue(beat.lines)
+                if renderer is not None:
+                    renderer.render(
+                        SceneView(
+                            current_mode="dialogue",
+                            speaker_name=self.npc_name,
+                            dialogue_lines=beat.lines,
+                        )
+                    )
+                else:
+                    print_dialogue(beat.lines)
             if beat.choice_id:
-                selected = run_scene_choice(state, beat.choice_id)
+                selected = run_scene_choice(state, beat.choice_id, renderer=renderer)
                 if selected is not None:
                     results[beat.choice_id] = selected
 
         if self.closing_hint:
-            print_hint(self.closing_hint)
+            if renderer is not None:
+                renderer.render(
+                    SceneView(
+                        current_mode="dialogue",
+                        speaker_name=self.npc_name,
+                        footer_hint=self.closing_hint,
+                    )
+                )
+            else:
+                print_hint(self.closing_hint)
 
-        _npc_footer()
+        if renderer is not None:
+            renderer.show_dialogue_footer()
+        else:
+            _npc_footer()
         return results
