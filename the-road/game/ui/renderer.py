@@ -1,7 +1,7 @@
 """
 Renderer — the single choke point between game logic and terminal output.
 
-Status (Task 3 fix — bounded system-text region):
+Status (Task 6 — portraits + threat shell scaffold):
     Renderer.render(view: SceneView) draws an anchored HUD followed by a
     bounded system-text region.  The terminal now behaves as three zones:
 
@@ -22,8 +22,9 @@ Status (Task 3 fix — bounded system-text region):
     In non-TTY mode (CI, piped), output flows sequentially — no cursor
     tricks, no buffering.
 
-    Dialogue sessions call display.py directly (unchanged) and invalidate
-    the HUD via invalidate_hud() so the next render() starts clean.
+    Dialogue mode has a SceneView path and now supports optional portraits.
+    Task 6 also adds a renderer-backed "threat" mode shell (UI scaffold only)
+    for future combat work.
 """
 
 from __future__ import annotations
@@ -42,6 +43,7 @@ from game.display import (
     print_status_screen as _print_status_screen,
     print_title_screen as _print_title_screen,
 )
+from game.ui.portraits import get_portrait
 from game.ui.view_models import HudData, SceneView
 
 # ── HUD geometry ─────────────────────────────────────────────────────────────
@@ -86,16 +88,78 @@ class Renderer:
 
     # ── SceneView dispatch ────────────────────────────────────────────────────
 
-    def render(self, view: SceneView) -> None:
+    def render(self, view: SceneView) -> int | None:
         """
         Draw the screen based on a SceneView snapshot.
 
-        Dispatches on view.current_mode.  Currently only 'explore' has a
-        real implementation; other modes are stubs that will be filled in
-        by future tasks.
+        Dispatches on view.current_mode.
+
+        Returns:
+            None for non-interactive modes (e.g., explore),
+            selected choice index for dialogue choice frames.
         """
         if view.current_mode == "explore":
             self._render_explore(view)
+            return None
+        if view.current_mode == "dialogue":
+            return self._render_dialogue(view)
+        if view.current_mode == "threat":
+            self._render_threat(view)
+            return None
+        return None
+
+    def _render_dialogue(self, view: SceneView) -> int | None:
+        """
+        Dialogue-mode frame routed through SceneView state.
+
+        The actual framing/typewriter behavior still lives in display.py.
+        This method simply maps SceneView fields onto renderer methods.
+        """
+        selected_idx: int | None = None
+        if view.portrait_id:
+            self.show_portrait(view.portrait_id, label=view.speaker_name or "Portrait")
+        if view.dialogue_lines:
+            self.show_dialogue(view.dialogue_lines)
+        if view.current_choices:
+            selected_idx = self.show_choices(view.choice_prompt_lines, view.current_choices)
+        if view.footer_hint:
+            self.show_hint(view.footer_hint)
+        return selected_idx
+
+    def _render_threat(self, view: SceneView) -> None:
+        """
+        Threat/combat presentation scaffold.
+
+        This is intentionally UI-only for now: no combat rules, no stateful
+        turn system. It simply renders a stable shell the future combat loop
+        can target.
+        """
+        self.invalidate_hud()
+        title = view.threat_name or "Unknown Threat"
+        bar = "═" * 80
+        print(f"\n{bar}")
+        print(f"THREAT MODE: {title}")
+        print(bar)
+
+        if view.portrait_id:
+            self.show_portrait(view.portrait_id, label=title)
+
+        if view.threat_lines:
+            print("\nEncounter:")
+            for line in view.threat_lines:
+                print(f"  {line}")
+
+        if view.player_status_lines:
+            print("\nYou:")
+            for line in view.player_status_lines:
+                print(f"  - {line}")
+
+        if view.combat_actions:
+            print("\nActions:")
+            for idx, action in enumerate(view.combat_actions, start=1):
+                print(f"  {idx}. {action}")
+
+        print("\n(Threat shell only — full combat rules are not implemented yet.)")
 
     def _render_explore(self, view: SceneView) -> None:
         """
@@ -198,6 +262,33 @@ class Renderer:
         result = _print_choices(prompt_lines, choices)
         self._hud_drawn = False
         return result
+
+    def show_dialogue_header(self, speaker_name: str, portrait_id: str = "") -> None:
+        """Render the opening NPC dialogue rule line."""
+        if portrait_id:
+            self.show_portrait(portrait_id, label=speaker_name)
+        line_width = 80
+        prefix = f"─── {speaker_name} "
+        remaining = max(0, line_width - len(prefix))
+        print(f"\n{prefix}{'─' * remaining}")
+
+    def show_dialogue_footer(self) -> None:
+        """Render the closing NPC dialogue rule line."""
+        print("─" * 80)
+
+    def show_portrait(self, portrait_id: str, label: str = "Portrait") -> None:
+        """
+        Print a compact text portrait block.
+
+        Terminal limitation: this is plain mono-text and intentionally small;
+        no color/positioning assumptions are made.
+        """
+        portrait = get_portrait(portrait_id)
+        if portrait is None:
+            print(f"[{label} portrait unavailable: {portrait_id}]")
+            return
+        for line in portrait:
+            print(line)
 
     # ── System / explore mode ─────────────────────────────────────────────────
 

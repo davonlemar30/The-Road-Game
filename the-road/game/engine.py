@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from data.dialogue_data import MOTHER_SCENE1_PART1, MOTHER_SCENE1_PART2
 from data.npcs import NPCS
-from game.choices import run_scene_choice
 from game.dialogue import DialogueManager
 from game.dialogue_session import Beat, DialogueSession
 from game.map_renderer import render_map
@@ -146,6 +145,7 @@ class GameEngine:
             "load":      self._cmd_load,
             "help":      self._cmd_help,
             "objective": self._cmd_objective,
+            "threat":    self._cmd_threat,
             "status":    self._cmd_status,
             "quit":      self._cmd_quit,
         }
@@ -281,6 +281,7 @@ class GameEngine:
                 player = self.state.player_name or "you"
                 session = DialogueSession(
                     npc_name="Keeper Bob",
+                    portrait_id="npc_bob",
                     beats=[
                         Beat(
                             lines=[
@@ -332,7 +333,7 @@ class GameEngine:
                         ),
                     ],
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "deliver_codex", added=True)
@@ -345,6 +346,7 @@ class GameEngine:
                 self.state.flags["mom_blessing_available"] = True
                 DialogueSession(
                     npc_name="Keeper Bob",
+                    portrait_id="npc_bob",
                     beats=[Beat(lines=[
                         "Keeper Bob checks your face before he checks your hands.",
                         '"You found him."',
@@ -354,7 +356,7 @@ class GameEngine:
                         '"She already suspects. Don\'t let her sit with that."',
                         '"Come back after and we finish this."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "mom_blessing")
@@ -365,6 +367,7 @@ class GameEngine:
             if self.state.flags["told_mom_plans"]:
                 DialogueSession(
                     npc_name="Keeper Bob",
+                    portrait_id="npc_bob",
                     beats=[Beat(lines=[
                         "Keeper Bob is at his workbench, back to you.",
                         "An Astari — small, watchful — sits on a perch near the window.",
@@ -372,17 +375,18 @@ class GameEngine:
                         '"Pick the one that picks you. That\'s always been my advice."',
                         '"The other one already knows you\'re here."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system("(Astari selection coming in the next build.)")
             else:
                 DialogueSession(
                     npc_name="Keeper Bob",
+                    portrait_id="npc_bob",
                     beats=[Beat(lines=[
                         "Keeper Bob looks up when you come in.",
                         '"When you\'ve had that talk at home, come back. Not before."',
                     ])],
-                ).run(self.state)
+                ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             return
 
@@ -422,13 +426,14 @@ class GameEngine:
                 # Beat B: Bob's visit + Nate news → nate response
                 session = DialogueSession(
                     npc_name=npc_name,
+                    portrait_id="npc_mother",
                     beats=[
                         Beat(lines=MOTHER_SCENE1_PART1, choice_id="mom_sleep_response"),
                         Beat(lines=MOTHER_SCENE1_PART2, choice_id="mom_nate_response"),
                     ],
                     closing_hint="She's here if there's more on your mind.",
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self.renderer.show_system(
                     self.objectives.set_objective(self.state, "find_bob", added=True)
@@ -439,10 +444,11 @@ class GameEngine:
             if lines:
                 session = DialogueSession(
                     npc_name=npc_name,
+                    portrait_id="npc_mother",
                     beats=[Beat(lines=lines)],
                     closing_hint=hint,
                 )
-                session.run(self.state)
+                session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             elif hint:
                 self.renderer.show_hint(hint)
@@ -458,10 +464,11 @@ class GameEngine:
         if lines:
             session = DialogueSession(
                 npc_name=npc_name,
+                portrait_id=f"npc_{npc_id}",
                 beats=[Beat(lines=lines)],
                 closing_hint=hint,
             )
-            session.run(self.state)
+            session.run(self.state, self.renderer)
             self.renderer.invalidate_hud()
         elif hint:
             self.renderer.show_hint(hint)
@@ -667,6 +674,7 @@ class GameEngine:
             lines.append("  map                      — show ISO Town map")
         lines += [
             "  objective                — show current objective",
+            "  threat                   — render threat/combat UI shell (preview)",
             "  save / load              — save or restore your progress",
             "  help                     — show this list",
             "  quit                     — exit the game",
@@ -679,6 +687,31 @@ class GameEngine:
         else:
             self.renderer.show_system("No objective set.")
         self.renderer.show_system(f"Current time: {format_time_label(self.state)}")
+
+    def _cmd_threat(self, _arg: str) -> None:
+        """Developer-facing preview of the threat/combat presentation shell."""
+        self.renderer.render(
+            SceneView(
+                current_mode="threat",
+                threat_name="Roadside Wisp",
+                portrait_id="threat_wisp",
+                threat_lines=[
+                    "A pale shape drifts just beyond the road marker.",
+                    "It does not advance. It waits, watching.",
+                ],
+                player_status_lines=[
+                    f"Name: {self.state.player_name or 'Unknown'}",
+                    f"Disposition: {self.state.disposition}",
+                    f"Reputation: {self.state.reputation}",
+                    f"Gold: {self.state.money}",
+                ],
+                combat_actions=[
+                    "Observe",
+                    "Steady your breath",
+                    "Back away",
+                ],
+            )
+        )
 
     def _cmd_quit(self, _arg: str) -> None:
         if self.state.flags["in_town"]:
