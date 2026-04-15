@@ -16,6 +16,7 @@ Screen modes
     dialogue    NPC conversation in progress — framed box + choice box.
     inspect     Close-up view of one object or detail — labeled panel, no HUD.
     menu        Main menu, save/load prompts — full-screen, no HUD.
+    threat      Combat/threat UI shell (presentation scaffold only).
 """
 
 from __future__ import annotations
@@ -59,7 +60,7 @@ class SceneView:
     inspect_text        Detailed description text for the inspected object.
     """
 
-    current_mode: str = "explore"   # "explore" | "dialogue" | "inspect" | "menu"
+    current_mode: str = "explore"   # "explore" | "dialogue" | "inspect" | "menu" | "threat"
     location_name: str = ""
     speaker_name: str = ""
     portrait_id: str = ""           # reserved — not used yet
@@ -68,6 +69,10 @@ class SceneView:
     choice_prompt_lines: list[str] = field(default_factory=list)
     hud: HudData | None = None
     footer_hint: str = ""
+    threat_name: str = ""
+    threat_lines: list[str] = field(default_factory=list)
+    player_status_lines: list[str] = field(default_factory=list)
+    combat_actions: list[str] = field(default_factory=list)
     input_prompt: str = "\n> "
     system_lines: list[str] = field(default_factory=list)
     inspect_target: str = ""        # inspect mode: object label for panel header

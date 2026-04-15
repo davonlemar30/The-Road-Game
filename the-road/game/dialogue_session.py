@@ -92,6 +92,7 @@ class DialogueSession:
     closing_hint    Optional plain-text hint printed below the last beat,
                     before the footer rule.  Use for parser nudges
                     (e.g. "She's here if there's more on your mind.").
+    portrait_id     Optional lookup key for renderer portrait placeholders.
     """
 
     def __init__(
@@ -99,10 +100,12 @@ class DialogueSession:
         npc_name: str,
         beats: list[Beat],
         closing_hint: str = "",
+        portrait_id: str = "",
     ) -> None:
         self.npc_name = npc_name
         self.beats = beats
         self.closing_hint = closing_hint
+        self.portrait_id = portrait_id
 
     def run(self, state, renderer=None) -> dict[str, str]:
         """

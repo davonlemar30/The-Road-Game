@@ -59,6 +59,7 @@ from game.display import (
     print_status_screen as _print_status_screen,
     print_title_screen as _print_title_screen,
 )
+from game.ui.portraits import get_portrait
 from game.ui.view_models import HudData, SceneView
 
 # ── HUD geometry ─────────────────────────────────────────────────────────────
