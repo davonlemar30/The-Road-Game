@@ -53,10 +53,12 @@ from shutil import get_terminal_size
 
 from game.display import (
     _IS_TTY,
+    _HAS_TERMIOS,
     menu_choice as _menu_choice,
     print_choices as _print_choices,
     print_dialogue as _print_dialogue,
     print_hint as _print_hint,
+    _read_enter_raw,
     print_status_screen as _print_status_screen,
     print_title_screen as _print_title_screen,
 )
@@ -211,11 +213,28 @@ class Renderer:
         if not rows:
             rows = [""]
         self._dialogue_render_frame(rows, footer="  ■ Enter")
+        self._wait_for_session_ack()
 
     def _show_session_hint(self, text: str) -> None:
         """Render closing hints inside the active dialogue viewport."""
         rows = self._dialogue_wrap_rows([text]) if text else [""]
         self._dialogue_render_frame(rows, footer="  ■ Enter")
+        self._wait_for_session_ack()
+
+    def _wait_for_session_ack(self) -> None:
+        """Pause on dialogue/hint frames so players can read before redraw."""
+        if not _IS_TTY:
+            return
+
+        try:
+            if _HAS_TERMIOS:
+                _read_enter_raw()
+                self._dialogue_tail_lines = 0
+            else:
+                input()
+                self._dialogue_tail_lines = 1
+        except (EOFError, KeyboardInterrupt):
+            self._dialogue_tail_lines = 0
 
     def _show_session_choices(self, prompt_lines: list[str], choices: list[str]) -> int:
         """Session-aware choice render that reuses the active dialogue viewport."""
