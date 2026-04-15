@@ -22,6 +22,8 @@ def save_game(state: GameState) -> str:
         "day": state.day,
         "minutes_since_midnight": state.minutes_since_midnight,
         "inventory": state.inventory,
+        "side_objectives": state.side_objectives,
+        "journal_notes": state.journal_notes,
         "questions_asked": state.questions_asked,
         "discovered_locations": state.discovered_locations,
         "reputation": state.reputation,
@@ -52,6 +54,8 @@ def load_game() -> tuple[bool, Union[GameState, str]]:
         state.day = data.get("day", 1)
         state.minutes_since_midnight = data.get("minutes_since_midnight", 8 * 60)
         state.inventory = data.get("inventory", [])
+        state.side_objectives = data.get("side_objectives", [])
+        state.journal_notes = data.get("journal_notes", [])
         state.questions_asked = data.get("questions_asked", [])
         state.discovered_locations = data.get("discovered_locations", [])
         state.reputation = data.get("reputation", 0)

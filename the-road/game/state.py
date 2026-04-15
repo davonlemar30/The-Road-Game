@@ -15,6 +15,8 @@ class GameState:
     day: int = 1
     minutes_since_midnight: int = 8 * 60
     inventory: list[str] = field(default_factory=list)
+    side_objectives: list[str] = field(default_factory=list)
+    journal_notes: list[str] = field(default_factory=list)
     questions_asked: list[str] = field(default_factory=list)
     discovered_locations: list[str] = field(default_factory=list)
     reputation: int = 0
