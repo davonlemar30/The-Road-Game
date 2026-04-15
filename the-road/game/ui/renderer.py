@@ -75,6 +75,8 @@ _HUD_HEIGHT: int = 5
 # Maximum number of visual rows kept in the system-text buffer.
 # This bounds the scroll region so it doesn't grow unbounded.
 _MAX_SYSTEM_LINES: int = 14
+_DIALOGUE_WIDTH: int = 78
+_DIALOGUE_CONTENT_WIDTH: int = _DIALOGUE_WIDTH - 4
 
 
 class Renderer:
@@ -107,6 +109,11 @@ class Renderer:
         # Whether we have drawn at least one HUD frame this session.
         # The very first frame cannot cursor-up (there is nothing above).
         self._hud_drawn: bool = False
+
+        # Session-aware dialogue viewport state.
+        self._dialogue_session_active: bool = False
+        self._dialogue_frame_lines: int = 0
+        self._dialogue_tail_lines: int = 0
 
     # ── SceneView dispatch ────────────────────────────────────────────────────
 
@@ -620,3 +627,6 @@ class Renderer:
         """
         self._hud_drawn = False
         self._system_buffer.clear()
+        self._dialogue_session_active = False
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0

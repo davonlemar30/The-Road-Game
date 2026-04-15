@@ -479,6 +479,7 @@ class GameEngine:
         if lines:
             session = DialogueSession(
                 npc_name=npc_name,
+                portrait_id=f"npc_{npc_id}",
                 beats=[Beat(lines=lines)],
                 closing_hint=hint,
             )
