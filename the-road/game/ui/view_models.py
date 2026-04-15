@@ -4,12 +4,6 @@ View models for The Road presentation layer.
 A SceneView is the minimal structured description of what the screen should
 display at any given moment.  The engine produces it; the Renderer consumes it.
 
-Status (Task 6 — active):
-    The engine builds a SceneView each main-loop iteration via _build_view().
-    Renderer.render(view) consumes it to draw an anchored HUD in explore mode
-    and framed dialogue/choice content in dialogue mode.
-    Task 6 extends SceneView for optional portraits and a threat shell mode.
-
 Design intent:
     - Engine logic and narrative content never touch terminal output directly.
     - The engine describes WHAT should appear; the Renderer decides HOW.
@@ -20,7 +14,7 @@ Screen modes
 ────────────
     explore     Default parser mode — HUD visible, command prompt active.
     dialogue    NPC conversation in progress — framed box + choice box.
-    inspect     Examining an object or location detail — no HUD overlay needed.
+    inspect     Close-up view of one object or detail — labeled panel, no HUD.
     menu        Main menu, save/load prompts — full-screen, no HUD.
     threat      Combat/threat UI shell (presentation scaffold only).
 """
@@ -55,15 +49,15 @@ class SceneView:
     current_choices     Option strings for the choice box (dialogue mode).
     choice_prompt_lines Prompt text lines shown above choices (dialogue mode).
     hud                 Extracted HUD data; None suppresses HUD redraw.
-    footer_hint         Closing hint printed below the last dialogue beat.
-    threat_name         Name/title of active threat (threat mode).
-    threat_lines        Encounter narrative lines (threat mode).
-    player_status_lines Lightweight player status rows (threat mode).
-    combat_actions      Placeholder action labels (threat mode).
+    footer_hint         Closing hint printed below the last dialogue beat,
+                        or optional context line inside the inspect panel.
     input_prompt        Prompt string shown before the command cursor.
     system_lines        Transient engine feedback lines (navigation, errors, etc.)
                         In explore mode these are flushed into the system-text
                         region below the HUD.
+    inspect_target      Name of the object being examined (inspect mode).
+                        Shown in the panel's labeled top border.
+    inspect_text        Detailed description text for the inspected object.
     """
 
     current_mode: str = "explore"   # "explore" | "dialogue" | "inspect" | "menu" | "threat"
@@ -81,3 +75,5 @@ class SceneView:
     combat_actions: list[str] = field(default_factory=list)
     input_prompt: str = "\n> "
     system_lines: list[str] = field(default_factory=list)
+    inspect_target: str = ""        # inspect mode: object label for panel header
+    inspect_text: str = ""          # inspect mode: detail description text

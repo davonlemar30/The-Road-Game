@@ -141,6 +141,7 @@ class GameEngine:
             "map":       self._cmd_map,
             "use":       self._cmd_use,
             "inventory": self._cmd_inventory,
+            "log":       self._cmd_log,
             "save":      self._cmd_save,
             "load":      self._cmd_load,
             "help":      self._cmd_help,
@@ -161,7 +162,10 @@ class GameEngine:
 
     def _cmd_look(self, _arg: str) -> None:
         if self.state.flags["in_town"]:
-            self.renderer.show_system(self.town.describe(self.state.current_location))
+            # show_location clears the system buffer so the room description
+            # anchors the top of the explore region instead of appending to
+            # stale nav feedback from previous commands.
+            self.renderer.show_location(self.town.describe(self.state.current_location))
         else:
             desc = self.world.describe_location(self.state.current_location)
             # If mom is present in the living room, mention her in the look description
@@ -176,7 +180,7 @@ class GameEngine:
                 and self.state.flags["mom_talked"]
             ):
                 desc += "\n\nYour mom is still in her chair. She gives you a look that says: go."
-            self.renderer.show_system(desc)
+            self.renderer.show_location(desc)
 
     def _cmd_go(self, arg: str) -> None:
         if self.state.flags["in_town"]:
@@ -248,10 +252,18 @@ class GameEngine:
         if not arg:
             self.renderer.show_system("Inspect what? (example: inspect mirror)")
             return
+
         if self.state.flags["in_town"]:
-            self.renderer.show_system(self.town.inspect(self.state.current_location, arg))
+            result = self.town.inspect(self.state.current_location, arg)
         else:
-            self.renderer.show_system(self.world.inspect(self.state.current_location, arg))
+            result = self.world.inspect(self.state.current_location, arg)
+
+        self.renderer.render(SceneView(
+            current_mode="inspect",
+            inspect_target=arg.strip(),
+            inspect_text=result,
+        ))
+        self.renderer.invalidate_hud()
 
     def _cmd_enter(self, arg: str) -> None:
         """Handle 'enter', 'open door', 'knock', 'go inside' in town."""
@@ -451,7 +463,7 @@ class GameEngine:
                 session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
             elif hint:
-                self.renderer.show_hint(hint)
+                self.renderer.render(SceneView(current_mode="dialogue", footer_hint=hint))
             return
 
         elif npc_id == "bob":
@@ -471,7 +483,7 @@ class GameEngine:
             session.run(self.state, self.renderer)
             self.renderer.invalidate_hud()
         elif hint:
-            self.renderer.show_hint(hint)
+            self.renderer.render(SceneView(current_mode="dialogue", footer_hint=hint))
 
     def _cmd_ask(self, arg: str) -> None:
         trimmed = arg.strip().lower()
@@ -490,9 +502,12 @@ class GameEngine:
                     lines, hint = self.dialogue.ask_bob(self.state, topic)
                 else:
                     lines, hint = self.dialogue.ask_town_npc(target, topic)
-                if lines:
-                    self.renderer.show_dialogue(lines)
-                self.renderer.show_hint(hint)
+                if lines or hint:
+                    self.renderer.render(SceneView(
+                        current_mode="dialogue",
+                        dialogue_lines=lines or [],
+                        footer_hint=hint or "",
+                    ))
                 return
             self.renderer.show_system("Ask who about that? (example: ask mom about bob)")
             return
@@ -516,9 +531,12 @@ class GameEngine:
             lines, hint = self.dialogue.ask_bob(self.state, topic)
         else:
             lines, hint = self.dialogue.ask_town_npc(npc_id, topic)
-        if lines:
-            self.renderer.show_dialogue(lines)
-        self.renderer.show_hint(hint)
+        if lines or hint:
+            self.renderer.render(SceneView(
+                current_mode="dialogue",
+                dialogue_lines=lines or [],
+                footer_hint=hint or "",
+            ))
 
     def _cmd_browse(self, arg: str) -> None:
         if not self.state.flags["in_town"]:
@@ -624,6 +642,11 @@ class GameEngine:
             lines.extend(f"  - {item}" for item in self.state.inventory)
             self.renderer.show_lines(lines)
 
+    def _cmd_log(self, _arg: str) -> None:
+        """Show a modal overlay of recent exploration log entries."""
+        self.renderer.show_log_view()
+        self.renderer.invalidate_hud()
+
     def _cmd_status(self, _arg: str) -> None:
         self.renderer.show_status(self.state, self._current_location_name())
 
@@ -673,6 +696,7 @@ class GameEngine:
         if self.state.flags["phone_unlocked"]:
             lines.append("  map                      — show ISO Town map")
         lines += [
+            "  log                      — show recent exploration log",
             "  objective                — show current objective",
             "  threat                   — render threat/combat UI shell (preview)",
             "  save / load              — save or restore your progress",
@@ -751,9 +775,12 @@ class GameEngine:
             lines, hint = self.dialogue.ask_bob(self.state, full_input)
         else:
             lines, hint = self.dialogue.ask_town_npc(npc_id, full_input)
-        if lines:
-            self.renderer.show_dialogue(lines)
-        self.renderer.show_hint(hint)
+        if lines or hint:
+            self.renderer.render(SceneView(
+                current_mode="dialogue",
+                dialogue_lines=lines or [],
+                footer_hint=hint or "",
+            ))
 
     # ── Location events ───────────────────────────────────────────────────────
 
@@ -833,13 +860,16 @@ class GameEngine:
 
     def _scene2_hook(self) -> None:
         """Scene 2 intro event when player first arrives at The Keeper's Dome."""
-        self.renderer.show_dialogue([
-            "The Keeper's Dome sits low and round, set back from the street like it was built to listen more than be seen.",
-            "The door is half-open. Voices carry through the gap — low, controlled.",
-            "The kind of conversation that doesn't need to be loud to have weight.",
-            "You step closer.",
-            '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
-        ])
+        self.renderer.render(SceneView(
+            current_mode="dialogue",
+            dialogue_lines=[
+                "The Keeper's Dome sits low and round, set back from the street like it was built to listen more than be seen.",
+                "The door is half-open. Voices carry through the gap — low, controlled.",
+                "The kind of conversation that doesn't need to be loud to have weight.",
+                "You step closer.",
+                '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
+            ],
+        ))
         self.renderer.show_system(
             self.objectives.set_objective(self.state, "enter_dome", added=True)
         )
