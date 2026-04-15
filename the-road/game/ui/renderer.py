@@ -128,6 +128,9 @@ class Renderer:
         if view.current_mode == "inspect":
             self._render_inspect(view)
             return None
+        if view.current_mode == "threat":
+            self._render_threat(view)
+            return None
         return None
 
     def _render_dialogue(self, view: SceneView) -> int | None:
@@ -221,6 +224,92 @@ class Renderer:
                 pass
 
         # Cursor position is now unknown — force a clean explore redraw next frame.
+        self._hud_drawn = False
+        self._system_buffer.clear()
+
+    def _render_threat(self, view: SceneView) -> None:
+        """
+        Threat/combat UI shell — presentation scaffold only, no game logic.
+
+        Renders a preview panel showing:
+          • optional ASCII portrait (from portraits.py, if defined)
+          • threat narrative lines
+          • player status snapshot
+          • available action choices (display only — no input taken)
+
+        Blocks for Enter in TTY mode, then returns control to explore.
+        In non-TTY mode, prints and continues without blocking.
+
+        This is a developer-facing preview while the full combat system is
+        designed.  The mode name, panel style, and field layout may change.
+        """
+        _PANEL_WIDTH: int = 80
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
+
+        # ── Portrait (optional) ────────────────────────────────────────────────
+        portrait_lines = get_portrait(view.portrait_id) if view.portrait_id else None
+
+        # ── Borders ───────────────────────────────────────────────────────────
+        threat_label = view.threat_name or "Unknown Threat"
+        label = f"[ Threat: {threat_label} ]"
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
+
+        def _row(content: str = "") -> str:
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        def _divider(title: str = "") -> str:
+            """Sub-section rule inside the panel."""
+            inner = f"  ── {title} " if title else "  "
+            dashes = "─" * max(0, _CONTENT_WIDTH - len(inner))
+            return _row(f"{inner}{dashes}")
+
+        # ── Print panel ────────────────────────────────────────────────────────
+        print()
+
+        # Portrait block above the panel, centered, if art is available.
+        if portrait_lines:
+            pad = " " * ((_PANEL_WIDTH - len(portrait_lines[0])) // 2)
+            for pline in portrait_lines:
+                print(f"{pad}{pline}")
+            print()
+
+        print(top)
+        print(_row())
+
+        # Threat narrative lines.
+        for line in (view.threat_lines or []):
+            for row in textwrap.wrap(line, width=_WRAP_WIDTH):
+                print(_row(f"  {row}"))
+
+        # Player status.
+        if view.player_status_lines:
+            print(_row())
+            print(_divider("Status"))
+            for line in view.player_status_lines:
+                print(_row(f"  {line}"))
+
+        # Available actions (display only — no input in preview mode).
+        if view.combat_actions:
+            print(_row())
+            print(_divider("Actions"))
+            for i, action in enumerate(view.combat_actions, 1):
+                print(_row(f"  [{i}]  {action}"))
+
+        print(_row())
+        print(_row("  (preview only — no action taken)"))
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        if _IS_TTY:
+            try:
+                input()
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+        # Cursor position is now unknown — force a clean explore redraw.
         self._hud_drawn = False
         self._system_buffer.clear()
 

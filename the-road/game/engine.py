@@ -473,10 +473,12 @@ class GameEngine:
 
         # ── All other NPCs: wrap in Dialogue Mode ────────────────────────────
         # (bob follow-ups, fruit_vendor, old_guard, archivist, etc.)
+        # portrait_id intentionally omitted here — generic town NPCs do not
+        # have defined portrait art in portraits.py.  Assign explicitly (like
+        # the mother/bob branches above) when portrait art is added for an NPC.
         if lines:
             session = DialogueSession(
                 npc_name=npc_name,
-                portrait_id=f"npc_{npc_id}",
                 beats=[Beat(lines=lines)],
                 closing_hint=hint,
             )
