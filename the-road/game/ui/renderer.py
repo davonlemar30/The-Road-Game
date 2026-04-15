@@ -1,10 +1,10 @@
 """
 Renderer — the single choke point between game logic and terminal output.
 
-Status (Task 6 — portraits + threat shell scaffold):
-    Renderer.render(view: SceneView) draws an anchored HUD followed by a
-    bounded system-text region.  The terminal now behaves as three zones:
+Renderer.render(view: SceneView) draws one complete frame based on the
+current screen mode.  The terminal behaves as distinct zones per mode:
 
+    explore
         ┌──────────────────────────┐
         │  HUD (5 lines, stable)   │
         ├──────────────────────────┤
@@ -14,17 +14,33 @@ Status (Task 6 — portraits + threat shell scaffold):
         ├──────────────────────────┤
         │  > input prompt          │
         └──────────────────────────┘
+        In TTY mode, render() uses cursor-up + erase-to-end to redraw the
+        HUD and system region in place.  show_system() appends to a deque
+        buffer AND prints immediately so the player sees output without delay.
+        In non-TTY mode, output flows sequentially — no cursor tricks.
 
-    In TTY mode, render() uses cursor-up + erase-to-end to redraw the HUD
-    and system region in place.  show_system() appends to a deque buffer
-    AND prints immediately so the player sees output without delay.
+        show_location() is the primary-content variant of show_system().
+        It first clears the system buffer so the room description anchors
+        the top of the explore region instead of appending to stale text.
+        This separates "where am I" (primary) from "what just happened"
+        (secondary transient feedback).
 
-    In non-TTY mode (CI, piped), output flows sequentially — no cursor
-    tricks, no buffering.
+    dialogue
+        Framed typewriter box per beat, optional choice box.
+        Delegates to the existing display.py backend helpers.
 
-    Dialogue mode has a SceneView path and now supports optional portraits.
-    Task 6 also adds a renderer-backed "threat" mode shell (UI scaffold only)
-    for future combat work.
+    inspect
+        Labeled close-up panel for a single object or detail.
+        Visually distinct from dialogue (no typewriter; labeled border).
+        Supports multi-paragraph text (paragraph breaks on blank lines).
+        Blocks for Enter in TTY mode, then returns control to explore.
+        In non-TTY mode, prints and continues without blocking.
+
+    log (modal overlay, not a SceneView mode)
+        Framed overlay showing recent entries from the persistent log buffer.
+        Accessible via the 'log' command.  Reuses the inspect-panel visual
+        style for consistency.  All show_system / show_location output is
+        captured in the log buffer regardless of TTY mode.
 """
 
 from __future__ import annotations
@@ -80,6 +96,12 @@ class Renderer:
         # Each entry is one terminal line (already wrapped to terminal width).
         self._system_buffer: deque[str] = deque(maxlen=_MAX_SYSTEM_LINES)
 
+        # Persistent log of raw text passed to show_system / show_location.
+        # One entry per call, before wrapping.  Used by show_log_view().
+        # Larger capacity than _system_buffer — it's a rolling history, not
+        # a visual buffer.
+        self._log_buffer: deque[str] = deque(maxlen=200)
+
         # Total terminal lines on screen since the last render() drew
         # (HUD + system region + input).  Used for cursor-up math.
         self._lines_on_screen: int = 0
@@ -102,7 +124,7 @@ class Renderer:
         Dispatches on view.current_mode.
 
         Returns:
-            None for non-interactive modes (e.g., explore),
+            None for non-interactive modes (explore, inspect),
             selected choice index for dialogue choice frames.
         """
         if view.current_mode == "explore":
@@ -110,6 +132,9 @@ class Renderer:
             return None
         if view.current_mode == "dialogue":
             return self._render_dialogue(view)
+        if view.current_mode == "inspect":
+            self._render_inspect(view)
+            return None
         if view.current_mode == "threat":
             self._render_threat(view)
             return None
@@ -123,59 +148,177 @@ class Renderer:
         This method simply maps SceneView fields onto renderer methods.
         """
         selected_idx: int | None = None
-        if view.portrait_id and not self._dialogue_session_active:
-            self.show_portrait(view.portrait_id, label=view.speaker_name or "Portrait")
         if view.dialogue_lines:
-            if self._dialogue_session_active:
-                self._session_show_dialogue(view.dialogue_lines)
-            else:
-                self.show_dialogue(view.dialogue_lines)
+            self.show_dialogue(view.dialogue_lines)
         if view.current_choices:
-            if self._dialogue_session_active:
-                selected_idx = self._session_show_choices(view.choice_prompt_lines, view.current_choices)
-            else:
-                selected_idx = self.show_choices(view.choice_prompt_lines, view.current_choices)
+            selected_idx = self.show_choices(view.choice_prompt_lines, view.current_choices)
         if view.footer_hint:
-            if self._dialogue_session_active:
-                self._session_show_dialogue([view.footer_hint], marker="■ Enter")
-            else:
-                self.show_hint(view.footer_hint)
+            self.show_hint(view.footer_hint)
         return selected_idx
+
+    def _render_inspect(self, view: SceneView) -> None:
+        """
+        Inspect-mode frame: labeled close-up panel with wrapped detail text.
+
+        Layout (80 chars wide):
+
+            ┌─[ Object Name ]──────────────────────────────────────────────────────────┐
+            │                                                                          │
+            │  Detailed description text, word-wrapped with a two-space indent.        │
+            │                                                                          │
+            │  ■ Enter                                                                 │
+            └──────────────────────────────────────────────────────────────────────────┘
+
+        Visually distinct from dialogue: no typewriter animation, labeled top
+        border, static single-frame render.
+
+        In TTY mode: blocks for Enter before returning so the player can read
+        at their own pace.  The next explore render redraws cleanly after.
+        In non-TTY mode: prints immediately and returns without blocking.
+        """
+        _PANEL_WIDTH: int = 80
+        # Inner content area between "│ " (2 chars) and " │" (2 chars).
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        # Wrap text 2 chars narrower than the content area to allow a visual
+        # two-space indent that sets inspect detail apart from the border.
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
+
+        target = (view.inspect_target or "Detail").strip()
+        text   = (view.inspect_text   or "").strip()
+
+        # ── Borders ───────────────────────────────────────────────────────────
+        label = f"[ {target.title()} ]"
+        # ┌─{label}{fill dashes}┐ must total exactly _PANEL_WIDTH chars:
+        #   1 (┌) + 1 (─) + len(label) + fill + 1 (┐) = 80  →  fill = 77 - len(label)
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
+
+        def _row(content: str = "") -> str:
+            """One 80-char content row: border + space + padded content + border."""
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        # ── Content rows ──────────────────────────────────────────────────────
+        # Support multi-paragraph text for lore/note content: split on blank
+        # lines so paragraph breaks render as visual gaps inside the panel.
+        paragraphs = [p.strip() for p in text.split("\n\n")] if text else []
+        wrapped_rows: list[str] = []
+        for i, para in enumerate(paragraphs):
+            if not para:
+                continue
+            if i > 0:
+                wrapped_rows.append("")   # blank row between paragraphs
+            wrapped_rows.extend(textwrap.wrap(para, width=_WRAP_WIDTH))
+
+        # ── Print panel ───────────────────────────────────────────────────────
+        print()          # blank spacer above panel — never overwritten
+        print(top)
+        print(_row())    # top inner padding
+        for row in wrapped_rows:
+            print(_row(f"  {row}" if row else ""))
+        if view.footer_hint:
+            print(_row())
+            for row in textwrap.wrap(view.footer_hint.strip(), width=_WRAP_WIDTH):
+                print(_row(f"  {row}"))
+        print(_row())    # bottom inner padding
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        if _IS_TTY:
+            try:
+                input()  # block for Enter; echoes one newline — HUD invalidation handles cleanup
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+        # Cursor position is now unknown — force a clean explore redraw next frame.
+        self._hud_drawn = False
+        self._system_buffer.clear()
 
     def _render_threat(self, view: SceneView) -> None:
         """
-        Threat/combat presentation scaffold.
+        Threat/combat UI shell — presentation scaffold only, no game logic.
 
-        This is intentionally UI-only for now: no combat rules, no stateful
-        turn system. It simply renders a stable shell the future combat loop
-        can target.
+        Renders a preview panel showing:
+          • optional ASCII portrait (from portraits.py, if defined)
+          • threat narrative lines
+          • player status snapshot
+          • available action choices (display only — no input taken)
+
+        Blocks for Enter in TTY mode, then returns control to explore.
+        In non-TTY mode, prints and continues without blocking.
+
+        This is a developer-facing preview while the full combat system is
+        designed.  The mode name, panel style, and field layout may change.
         """
-        self.invalidate_hud()
-        title = view.threat_name or "Unknown Threat"
-        bar = "═" * 80
-        print(f"\n{bar}")
-        print(f"THREAT MODE: {title}")
-        print(bar)
+        _PANEL_WIDTH: int = 80
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
 
-        if view.portrait_id:
-            self.show_portrait(view.portrait_id, label=title)
+        # ── Portrait (optional) ────────────────────────────────────────────────
+        portrait_lines = get_portrait(view.portrait_id) if view.portrait_id else None
 
-        if view.threat_lines:
-            print("\nEncounter:")
-            for line in view.threat_lines:
-                print(f"  {line}")
+        # ── Borders ───────────────────────────────────────────────────────────
+        threat_label = view.threat_name or "Unknown Threat"
+        label = f"[ Threat: {threat_label} ]"
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
 
+        def _row(content: str = "") -> str:
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        def _divider(title: str = "") -> str:
+            """Sub-section rule inside the panel."""
+            inner = f"  ── {title} " if title else "  "
+            dashes = "─" * max(0, _CONTENT_WIDTH - len(inner))
+            return _row(f"{inner}{dashes}")
+
+        # ── Print panel ────────────────────────────────────────────────────────
+        print()
+
+        # Portrait block above the panel, centered, if art is available.
+        if portrait_lines:
+            pad = " " * ((_PANEL_WIDTH - len(portrait_lines[0])) // 2)
+            for pline in portrait_lines:
+                print(f"{pad}{pline}")
+            print()
+
+        print(top)
+        print(_row())
+
+        # Threat narrative lines.
+        for line in (view.threat_lines or []):
+            for row in textwrap.wrap(line, width=_WRAP_WIDTH):
+                print(_row(f"  {row}"))
+
+        # Player status.
         if view.player_status_lines:
-            print("\nYou:")
+            print(_row())
+            print(_divider("Status"))
             for line in view.player_status_lines:
-                print(f"  - {line}")
+                print(_row(f"  {line}"))
 
+        # Available actions (display only — no input in preview mode).
         if view.combat_actions:
-            print("\nActions:")
-            for idx, action in enumerate(view.combat_actions, start=1):
-                print(f"  {idx}. {action}")
+            print(_row())
+            print(_divider("Actions"))
+            for i, action in enumerate(view.combat_actions, 1):
+                print(_row(f"  [{i}]  {action}"))
 
-        print("\n(Threat shell only — full combat rules are not implemented yet.)")
+        print(_row())
+        print(_row("  (preview only — no action taken)"))
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        if _IS_TTY:
+            try:
+                input()
+            except (EOFError, KeyboardInterrupt):
+                pass
+
+        # Cursor position is now unknown — force a clean explore redraw.
+        self._hud_drawn = False
+        self._system_buffer.clear()
 
     def _render_explore(self, view: SceneView) -> None:
         """
@@ -279,111 +422,18 @@ class Renderer:
         self._hud_drawn = False
         return result
 
-    def show_dialogue_header(self, speaker_name: str, portrait_id: str = "") -> None:
-        """Render the opening NPC dialogue rule line."""
-        self._dialogue_session_active = True
-        self._dialogue_frame_lines = 0
-        self._dialogue_tail_lines = 0
-        if portrait_id:
-            self.show_portrait(portrait_id, label=speaker_name)
+    def begin_dialogue_session(self, speaker_name: str) -> None:
+        """Open a dialogue session: print the NPC rule line and mark HUD dirty."""
         line_width = 80
         prefix = f"─── {speaker_name} "
         remaining = max(0, line_width - len(prefix))
         print(f"\n{prefix}{'─' * remaining}")
+        self._hud_drawn = False
 
-    def show_dialogue_footer(self) -> None:
-        """Render the closing NPC dialogue rule line."""
+    def end_dialogue_session(self) -> None:
+        """Close a dialogue session: print the footer rule line and mark HUD dirty."""
         print("─" * 80)
-        self._dialogue_session_active = False
-        self._dialogue_frame_lines = 0
-        self._dialogue_tail_lines = 0
-
-    def show_portrait(self, portrait_id: str, label: str = "Portrait") -> None:
-        """
-        Print a compact text portrait block.
-
-        Terminal limitation: this is plain mono-text and intentionally small;
-        no color/positioning assumptions are made.
-        """
-        portrait = get_portrait(portrait_id)
-        if portrait is None:
-            print(f"[{label} portrait unavailable: {portrait_id}]")
-            return
-        for line in portrait:
-            print(line)
-
-    def _dialogue_rows(self, lines: list[str]) -> list[str]:
-        rows: list[str] = []
-        for line in lines:
-            if not line.strip():
-                rows.append("")
-            else:
-                rows.extend(
-                    textwrap.wrap(line.strip(), width=_DIALOGUE_CONTENT_WIDTH)
-                    or [""]
-                )
-        return rows or [""]
-
-    def _session_draw_frame(self, rows: list[str], marker: str) -> None:
-        if not _IS_TTY:
-            print()
-            top = "┌" + "─" * (_DIALOGUE_WIDTH - 2) + "┐"
-            bot = "└" + "─" * (_DIALOGUE_WIDTH - 2) + "┘"
-            print(top)
-            for row in rows:
-                print(f"│ {row:<{_DIALOGUE_CONTENT_WIDTH}} │")
-            print(f"│ {'  ' + marker:<{_DIALOGUE_CONTENT_WIDTH}} │")
-            print(bot)
-            return
-
-        total_prev = self._dialogue_frame_lines + self._dialogue_tail_lines
-        if total_prev > 0:
-            sys.stdout.write(f"\033[{total_prev}A\r")
-            sys.stdout.write("\033[J")
-            sys.stdout.flush()
-
-        top = "┌" + "─" * (_DIALOGUE_WIDTH - 2) + "┐"
-        bot = "└" + "─" * (_DIALOGUE_WIDTH - 2) + "┘"
-        frame_lines = [top]
-        frame_lines.extend(f"│ {row:<{_DIALOGUE_CONTENT_WIDTH}} │" for row in rows)
-        frame_lines.append(f"│ {'  ' + marker:<{_DIALOGUE_CONTENT_WIDTH}} │")
-        frame_lines.append(bot)
-        for line in frame_lines:
-            print(line)
-        self._dialogue_frame_lines = len(frame_lines)
-        self._dialogue_tail_lines = 0
-
-    def _session_show_dialogue(self, lines: list[str], marker: str = "■ Enter") -> None:
-        rows = self._dialogue_rows(lines)
-        self._session_draw_frame(rows, marker=marker)
-
-        if not _IS_TTY:
-            return
-        input("  > ")
-        self._dialogue_tail_lines = 1
-
-    def _session_show_choices(self, prompt_lines: list[str], choices: list[str]) -> int:
-        rows = self._dialogue_rows(prompt_lines)
-        if rows and rows != [""]:
-            rows.append("")
-        for i, choice in enumerate(choices, 1):
-            rows.extend(self._dialogue_rows([f"[{i}]  {choice}"]))
-
-        self._session_draw_frame(rows, marker="◆ Choose")
-
-        tail = 0
-        while True:
-            raw = input("  > ").strip()
-            tail += 1
-            try:
-                idx = int(raw) - 1
-                if 0 <= idx < len(choices):
-                    self._dialogue_tail_lines = tail
-                    return idx
-            except ValueError:
-                pass
-            print(f"  (Enter a number from 1 to {len(choices)}.)")
-            tail += 1
+        self._hud_drawn = False
 
     # ── System / explore mode ─────────────────────────────────────────────────
 
@@ -420,7 +470,14 @@ class Renderer:
         Non-TTY mode:
           Prints immediately — no buffering needed since there are no
           cursor tricks to erase previous output.
+
+        All non-empty text is also appended to _log_buffer (raw, before
+        wrapping) so the 'log' command can show recent history.
         """
+        # Log the raw text for the transcript, regardless of TTY mode.
+        if text and text.strip():
+            self._log_buffer.append(text)
+
         if not _IS_TTY:
             print(text)
             return
@@ -431,12 +488,102 @@ class Renderer:
             print(row)
             self._lines_on_screen += 1
 
+    def show_location(self, text: str) -> None:
+        """
+        Display a room or location description as primary explore content.
+
+        Unlike show_system(), this first clears the system buffer so the
+        location description anchors the top of the explore display region.
+        Subsequent show_system() calls then append navigation feedback below.
+
+        Use this for 'look' output.  Use show_system() for transient
+        feedback (travel messages, errors, objective updates, etc.).
+        """
+        # Clear stale system messages — location description is the new anchor.
+        # _lines_on_screen is preserved so the next render() can cursor-up
+        # the correct amount and erase the old frame before redrawing.
+        self._system_buffer.clear()
+        self.show_system(text)
+
     def show_lines(self, lines: list[str]) -> None:
         """
         Emit a sequence of engine feedback lines, preserving order.
         """
         for line in lines:
             self.show_system(line)
+
+    def show_log_view(self) -> None:
+        """
+        Show a framed modal overlay of recent exploration log entries.
+
+        Pulls from _log_buffer (raw text, one entry per show_system /
+        show_location call) and renders the most recent content inside an
+        inspect-style panel.  Blocks for Enter in TTY mode.
+
+        In non-TTY mode, prints a plain list without framing.
+        """
+        _PANEL_WIDTH: int = 80
+        _CONTENT_WIDTH: int = _PANEL_WIDTH - 4   # 76
+        _WRAP_WIDTH: int = _CONTENT_WIDTH - 2    # 74
+        _MAX_VISIBLE: int = 22                   # max content rows shown
+
+        entries = list(self._log_buffer)
+
+        if not _IS_TTY:
+            # Non-TTY: simple unframed output
+            print("\n--- Recent Log ---")
+            for entry in entries[-20:]:
+                if entry and entry.strip():
+                    print(entry)
+            print("--- End ---\n")
+            return
+
+        # Build wrapped rows from all log entries (oldest → newest).
+        # Each entry is separated by a blank row so chunks stay readable.
+        all_rows: list[str] = []
+        for entry in entries:
+            if not entry or not entry.strip():
+                continue
+            for row in textwrap.wrap(entry, width=_WRAP_WIDTH):
+                all_rows.append(row)
+            all_rows.append("")   # blank separator between log entries
+
+        # Take the most recent rows (tail of the list).
+        visible = all_rows[-_MAX_VISIBLE:] if len(all_rows) > _MAX_VISIBLE else all_rows
+        # Drop leading blank rows that result from the tail slice.
+        while visible and not visible[0].strip():
+            visible = visible[1:]
+
+        # ── Panel borders ──────────────────────────────────────────────────────
+        label = "[ Recent Log ]"
+        fill = max(0, _PANEL_WIDTH - 3 - len(label))
+        top  = f"┌─{label}{'─' * fill}┐"
+        bot  = "└" + "─" * (_PANEL_WIDTH - 2) + "┘"
+
+        def _row(content: str = "") -> str:
+            return f"│ {content:<{_CONTENT_WIDTH}} │"
+
+        # ── Print panel ────────────────────────────────────────────────────────
+        print()
+        print(top)
+        print(_row())
+        if not visible:
+            print(_row("  (no recent activity)"))
+        else:
+            for r in visible:
+                print(_row(f"  {r}" if r.strip() else ""))
+        print(_row())
+        print(_row("  ■ Enter"))
+        print(bot)
+
+        try:
+            input()
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+        # Cursor position is now unknown — force a clean explore redraw.
+        self._hud_drawn = False
+        self._system_buffer.clear()
 
     # ── Input ─────────────────────────────────────────────────────────────────
 
