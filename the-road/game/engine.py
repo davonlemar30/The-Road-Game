@@ -14,7 +14,7 @@ from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
 from game.ui import Renderer
-from game.ui.view_models import HudData, SceneView
+from game.ui.view_models import HudData, SceneView, SidebarSection
 from game.world import World
 
 
@@ -39,6 +39,10 @@ class GameEngine:
             view = self._build_view()
             self.renderer.render(view)
             raw = self.renderer.get_input()
+            if raw.strip().isdigit():
+                idx = int(raw.strip()) - 1
+                if 0 <= idx < len(view.suggested_actions):
+                    raw = view.suggested_actions[idx]
             verb, arg = parse_command(raw)
             self._handle_command(verb, arg)
 
@@ -88,17 +92,86 @@ class GameEngine:
     def _build_view(self) -> SceneView:
         """Build a SceneView snapshot from the current runtime state."""
         location_name = self._current_location_name()
+        suggested_actions = self._suggested_actions()
+        sidebar_sections = self._build_sidebar_sections(location_name)
         return SceneView(
             current_mode="explore",
             location_name=location_name,
+            suggested_actions=suggested_actions,
+            sidebar_sections=sidebar_sections,
             hud=HudData(
                 player_name=self.state.player_name,
                 location_name=location_name,
                 time_label=self.state.time_label,
                 money=self.state.money,
                 objective=self.state.current_objective,
+                reputation=self.state.reputation,
+                disposition=self.state.disposition,
             ),
         )
+
+    def _build_sidebar_sections(self, location_name: str) -> list[SidebarSection]:
+        sections: list[SidebarSection] = [
+            SidebarSection("Location", [location_name, self.state.time_label]),
+            SidebarSection("Objective", [self.state.current_objective or "No active objective"]),
+            SidebarSection(
+                "Player",
+                [
+                    f"Name: {self.state.player_name or 'Unknown'}",
+                    f"Reputation: {self.state.reputation}",
+                    f"Disposition: {self.state.disposition}",
+                ],
+            ),
+        ]
+
+        if self.state.inventory:
+            sections.append(SidebarSection("Inventory", self.state.inventory[:4]))
+
+        if self.state.flags["in_town"]:
+            node = self.town.get_node(self.state.current_location)
+            npcs = node.get("visible_npcs", [])
+            if npcs:
+                sections.append(SidebarSection("Nearby", npcs[:4]))
+        else:
+            if self.state.current_location == "living_room" and not self.state.flags["mom_talked"]:
+                sections.append(SidebarSection("Nearby", ["Your mom is here"]))
+
+        sections.append(
+            SidebarSection(
+                "Hint",
+                ["Type a number for obvious actions or type any command."],
+            )
+        )
+        return sections
+
+    def _suggested_actions(self) -> list[str]:
+        actions = ["look", "where", "inventory", "help"]
+
+        if self.state.flags["in_town"]:
+            node = self.town.get_node(self.state.current_location)
+            neighbors = node.get("neighbors", [])[:2]
+            for neighbor_id in neighbors:
+                actions.append(f"go {self.town.get_node(neighbor_id)['name'].lower()}")
+            npcs = node.get("visible_npcs", [])
+            if npcs:
+                actions.append(f"talk {npcs[0].split()[0].lower()}")
+            if node.get("shops"):
+                actions.append("browse")
+        else:
+            exits = self.world.get_location(self.state.current_location).get("exits", {})
+            for exit_name in list(exits.keys())[:2]:
+                actions.append(f"go {exit_name}")
+            if self.state.current_location == "living_room":
+                actions.append("talk mom")
+
+        # preserve order, remove duplicates
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for action in actions:
+            if action not in seen:
+                seen.add(action)
+                ordered.append(action)
+        return ordered[:6]
 
     def _current_location_name(self) -> str:
         if self.state.flags["in_town"]:
