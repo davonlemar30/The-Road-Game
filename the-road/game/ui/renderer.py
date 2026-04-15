@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import select
+import sys
+import time
 from collections import deque
 from typing import Iterable
 
@@ -15,6 +18,30 @@ from game.display import (
 )
 from game.ui.screens import build_fixed_frame, build_journal_overlay
 from game.ui.view_models import SceneView
+
+# ── Typewriter timing ─────────────────────────────────────────────────────────
+_CHAR_DELAY: float = 0.022        # seconds between characters
+_SENTENCE_PAUSE: float = 0.130    # extra pause after sentence-ending punctuation
+_PAUSE_CHARS: frozenset = frozenset(".!?—…")
+_IS_TTY: bool = sys.stdin.isatty() and sys.stdout.isatty()
+
+
+def _poll_skip() -> bool:
+    """Non-blocking check: return True (and consume the byte) if Enter is pending on stdin.
+
+    Uses select() with a zero timeout so it never blocks.  In non-TTY mode or
+    on platforms without select, always returns False.
+    """
+    if not _IS_TTY:
+        return False
+    try:
+        ready, _, _ = select.select([sys.stdin], [], [], 0)
+        if ready:
+            ch = sys.stdin.read(1)
+            return ch in ("\n", "\r", " ")
+    except Exception:
+        pass
+    return False
 
 
 class Renderer:
@@ -66,14 +93,30 @@ class Renderer:
             return None
 
         if view.current_mode == "dialogue":
+            # ── Beat lines: clear, animate, then gate on Enter ────────────────
             if view.dialogue_lines:
-                self._append_story(view.dialogue_lines)
-            if view.footer_hint:
-                self._append_story(["", view.footer_hint])
+                self._story_lines.clear()
+                self._type_dialogue_in_live(view.dialogue_lines, view.speaker_name)
+                self._dialogue_gate()
+                return None
+
+            # ── Choice prompt: show only choices in command panel ─────────────
             if view.current_choices:
+                if view.choice_prompt_lines:
+                    for line in view.choice_prompt_lines:
+                        if line.strip():
+                            self._story_lines.append(line)
+                saved_actions = self._pending_actions[:]
+                self._pending_actions = []
                 self._pending_choices = view.current_choices[:]
                 self._render_main(view)
-                return self._get_numeric_choice(view.current_choices)
+                result = self._get_numeric_choice(view.current_choices)
+                self._pending_actions = saved_actions
+                return result
+
+            # ── Closing hint or bare dialogue frame ───────────────────────────
+            if view.footer_hint:
+                self._append_story(["", view.footer_hint])
             self._render_main(view)
             return None
 
@@ -132,6 +175,77 @@ class Renderer:
             if self._last_screen is not None:
                 self._render_main(self._last_screen)
 
+    def _build_dialogue_frame(self, extra_line: str = "", footer: str = "") -> SceneView:
+        """Construct a SceneView for the current dialogue state (no actions, no choices)."""
+        lines = list(self._story_lines)
+        if extra_line:
+            lines.append(extra_line)
+        return SceneView(
+            current_mode="dialogue",
+            location_name=self._location_name,
+            sidebar_sections=self._sidebar_sections,
+            main_lines=lines,
+            suggested_actions=[],
+            current_choices=[],
+            footer_hint=footer,
+            input_prompt=" ",
+        )
+
+    def _type_dialogue_in_live(self, lines: list[str], speaker_name: str = "") -> None:
+        """Animate dialogue lines character-by-character inside the Rich Live display.
+
+        Pressing Enter at any point during animation sets a skip flag that
+        instantly commits all remaining text (no more per-character sleeps).
+        The dialogue gate that follows still waits for a second Enter press.
+        """
+        if speaker_name:
+            self._story_lines.append(f"── {speaker_name}")
+            self._story_lines.append("")
+
+        skip = False
+
+        for raw_line in lines:
+            line = raw_line.rstrip()
+            if not line.strip():
+                self._story_lines.append("")
+                self._ensure_live()
+                self._live.update(build_fixed_frame(self._build_dialogue_frame()), refresh=True)
+                continue
+
+            if skip:
+                # Already skipping: commit the line directly, no per-char renders.
+                self._story_lines.append(line)
+                continue
+
+            animated = ""
+            for ch in line:
+                animated += ch
+                self._ensure_live()
+                self._live.update(
+                    build_fixed_frame(self._build_dialogue_frame(extra_line=animated)),
+                    refresh=True,
+                )
+                if _IS_TTY and not skip:
+                    if _poll_skip():
+                        skip = True  # finish this line fast, then commit remaining instantly
+                    else:
+                        time.sleep(_SENTENCE_PAUSE if ch in _PAUSE_CHARS else _CHAR_DELAY)
+
+            self._story_lines.append(line)
+
+        # One final render to show all committed lines cleanly.
+        self._ensure_live()
+        self._live.update(build_fixed_frame(self._build_dialogue_frame()), refresh=True)
+
+    def _dialogue_gate(self) -> None:
+        """Show '▼ Press Enter to continue...' and block until the player presses Enter."""
+        self._ensure_live()
+        self._live.update(
+            build_fixed_frame(self._build_dialogue_frame(footer="▼  Press Enter to continue...")),
+            refresh=True,
+        )
+        self.console.input("")
+
     def show_title(self) -> None:
         self._stop_live()
         _print_title_screen()
@@ -160,13 +274,17 @@ class Renderer:
 
     def begin_dialogue_session(self, speaker_name: str) -> None:
         self._in_dialogue_session = True
-        self._append_story([f"{speaker_name}", ""])
+        # Speaker name is shown per-beat by _type_dialogue_in_live.
 
     def end_dialogue_session(self) -> None:
         self._in_dialogue_session = False
 
     def show_system(self, text: str) -> None:
         self._append_story([text])
+
+    def clear_story(self) -> None:
+        """Clear the story pane buffer. Call before showing a fresh room description."""
+        self._story_lines.clear()
 
     def show_location(self, text: str) -> None:
         self._append_story([""])

@@ -68,7 +68,8 @@ def _command_panel(view: SceneView) -> Panel:
     for i, action in enumerate(view.suggested_actions[:6], 1):
         lines.append(Text(f"[{i}] {action}", style="grey70"))
     if view.current_choices:
-        lines.append(Text(""))
+        if lines:  # add separator only when suggested actions precede choices
+            lines.append(Text(""))
         for i, choice in enumerate(view.current_choices[:6], 1):
             lines.append(Text(f"({i}) {choice}"))
     if view.footer_hint:

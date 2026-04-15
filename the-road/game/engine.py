@@ -161,8 +161,14 @@ class GameEngine:
                 actions.append("browse")
         else:
             exits = self.world.get_location(self.state.current_location).get("exits", {})
-            for exit_name in list(exits.keys())[:2]:
-                actions.append(f"go {exit_name}")
+            # Deduplicate by destination so aliases (down/downstairs) don't both appear.
+            seen_dests: set[str] = set()
+            for exit_name, dest in exits.items():
+                if dest not in seen_dests:
+                    seen_dests.add(dest)
+                    actions.append(f"go {exit_name}")
+                    if len(seen_dests) >= 2:
+                        break
             if self.state.current_location == "living_room":
                 actions.append("talk mom")
 
@@ -246,10 +252,8 @@ class GameEngine:
     # ── Handlers ─────────────────────────────────────────────────────────────
 
     def _cmd_look(self, _arg: str) -> None:
+        self.renderer.clear_story()
         if self.state.flags["in_town"]:
-            # show_location clears the system buffer so the room description
-            # anchors the top of the explore region instead of appending to
-            # stale nav feedback from previous commands.
             self.renderer.show_location(self.town.describe(self.state.current_location))
         else:
             desc = self.world.describe_location(self.state.current_location)
@@ -303,9 +307,10 @@ class GameEngine:
 
         self.state.current_location = result
         advance_time(self.state, 5)
-        location_name = self.world.get_location(result)["name"]
-        self.renderer.show_system(f"\nYou head to the {location_name}.")
-        self.renderer.show_system("(Type 'look' to take in the room.)")
+        # Auto-look: clear stale content and show the new room immediately so
+        # the story pane, title, and sidebar all reflect the same location.
+        self._cmd_look("")
+        # Location-entry events append below the fresh room description.
         self._on_location_entered(result)
 
     def _cmd_go_town(self, arg: str) -> None:
@@ -328,9 +333,8 @@ class GameEngine:
 
         self.state.current_location = result
         advance_time(self.state, 15)
-        node_name = self.town.get_node(result)["name"]
-        self.renderer.show_system(f"\nYou make your way to {node_name}.")
-        self.renderer.show_system("(Type 'look' to take in your surroundings.)")
+        # Auto-look: clear stale content and show the new location immediately.
+        self._cmd_look("")
         self._on_town_node_entered(result)
 
     def _cmd_inspect(self, arg: str) -> None:
