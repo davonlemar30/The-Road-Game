@@ -26,8 +26,9 @@ current screen mode.  The terminal behaves as distinct zones per mode:
         (secondary transient feedback).
 
     dialogue
-        Framed typewriter box per beat, optional choice box.
-        Delegates to the existing display.py backend helpers.
+        During structured dialogue sessions, one anchored frame is redrawn
+        in-place across beats/choices/hints. Outside sessions, dialogue
+        still delegates to the display.py helpers.
 
     inspect
         Labeled close-up panel for a single object or detail.
@@ -155,6 +156,90 @@ class Renderer:
         if view.footer_hint:
             self.show_hint(view.footer_hint)
         return selected_idx
+
+    def _dialogue_wrap_rows(self, lines: list[str]) -> list[str]:
+        """Wrap dialogue/choice lines to the framed dialogue content width."""
+        rows: list[str] = []
+        for line in lines:
+            if not line or not line.strip():
+                rows.append("")
+                continue
+            rows.extend(
+                textwrap.wrap(
+                    line.strip(),
+                    width=_DIALOGUE_CONTENT_WIDTH,
+                    replace_whitespace=True,
+                    drop_whitespace=True,
+                )
+                or [""]
+            )
+        return rows
+
+    def _dialogue_move_to_anchor(self) -> None:
+        """Return cursor to the top of the active dialogue viewport."""
+        if not _IS_TTY:
+            return
+        total = self._dialogue_frame_lines + self._dialogue_tail_lines
+        if total > 0:
+            sys.stdout.write(f"\033[{total}A\r")
+            sys.stdout.write("\033[J")
+            sys.stdout.flush()
+
+    def _dialogue_render_frame(self, rows: list[str], footer: str = "") -> None:
+        """Render one dialogue viewport frame and track how many lines it consumed."""
+        if _IS_TTY:
+            self._dialogue_move_to_anchor()
+
+        top = "┌" + "─" * (_DIALOGUE_WIDTH - 2) + "┐"
+        bot = "└" + "─" * (_DIALOGUE_WIDTH - 2) + "┘"
+
+        print(top)
+        for row in rows:
+            print(f"│ {row:<{_DIALOGUE_CONTENT_WIDTH}} │")
+
+        if footer:
+            print(f"│ {footer:<{_DIALOGUE_CONTENT_WIDTH}} │")
+        print(bot)
+        sys.stdout.flush()
+
+        self._dialogue_frame_lines = len(rows) + 3 + (1 if footer else 0)
+        self._dialogue_tail_lines = 0
+
+    def _show_session_dialogue(self, lines: list[str]) -> None:
+        """Session-aware dialogue render that reuses one anchored viewport."""
+        rows = self._dialogue_wrap_rows(lines)
+        if not rows:
+            rows = [""]
+        self._dialogue_render_frame(rows, footer="  ■ Enter")
+
+    def _show_session_hint(self, text: str) -> None:
+        """Render closing hints inside the active dialogue viewport."""
+        rows = self._dialogue_wrap_rows([text]) if text else [""]
+        self._dialogue_render_frame(rows, footer="  ■ Enter")
+
+    def _show_session_choices(self, prompt_lines: list[str], choices: list[str]) -> int:
+        """Session-aware choice render that reuses the active dialogue viewport."""
+        rows = self._dialogue_wrap_rows(prompt_lines)
+        if rows:
+            rows.append("")
+
+        for i, choice in enumerate(choices, 1):
+            rows.extend(self._dialogue_wrap_rows([f"[{i}]  {choice}"]))
+
+        self._dialogue_render_frame(rows, footer="  ◆ Choose")
+
+        while True:
+            try:
+                raw = input("  > ").strip()
+                self._dialogue_tail_lines = 1
+                idx = int(raw) - 1
+                if 0 <= idx < len(choices):
+                    return idx
+                print(f"  (Enter a number from 1 to {len(choices)}.)")
+                self._dialogue_tail_lines += 1
+            except ValueError:
+                print(f"  (Enter a number from 1 to {len(choices)}.)")
+                self._dialogue_tail_lines += 1
 
     def _render_inspect(self, view: SceneView) -> None:
         """
@@ -401,39 +486,54 @@ class Renderer:
     # ── Dialogue mode ─────────────────────────────────────────────────────────
 
     def show_dialogue(self, lines: list[str]) -> None:
-        """
-        Paginated NPC dialogue box with typewriter animation.
-
-        Dialogue uses its own cursor-up redraw internally (display.py).
-        After it finishes, cursor position is unknowable — invalidate.
-        """
-        _print_dialogue(lines)
-        self._hud_drawn = False
+        """Render dialogue lines (session-aware when dialogue mode is active)."""
+        if self._dialogue_session_active:
+            self._show_session_dialogue(lines)
+        else:
+            _print_dialogue(lines)
+            self._hud_drawn = False
 
     def show_hint(self, text: str) -> None:
-        """Single-line meta hint printed outside the dialogue frame."""
+        """Render meta hints; in sessions they stay inside the anchored viewport."""
+        if self._dialogue_session_active:
+            self._show_session_hint(text)
+            return
+
         _print_hint(text)
         if text:
             self._lines_on_screen += 1
 
     def show_choices(self, prompt_lines: list[str], choices: list[str]) -> int:
-        """Framed numeric choice box; returns selected 0-based index."""
+        """Framed numeric choice box; session-aware when dialogue mode is active."""
+        if self._dialogue_session_active:
+            return self._show_session_choices(prompt_lines, choices)
+
         result = _print_choices(prompt_lines, choices)
         self._hud_drawn = False
         return result
 
     def begin_dialogue_session(self, speaker_name: str) -> None:
-        """Open a dialogue session: print the NPC rule line and mark HUD dirty."""
+        """Open a dialogue session and prepare anchored dialogue viewport state."""
         line_width = 80
         prefix = f"─── {speaker_name} "
         remaining = max(0, line_width - len(prefix))
         print(f"\n{prefix}{'─' * remaining}")
+
+        self._dialogue_session_active = True
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0
         self._hud_drawn = False
 
     def end_dialogue_session(self) -> None:
-        """Close a dialogue session: print the footer rule line and mark HUD dirty."""
+        """Close a dialogue session, leaving one footer rule and resetting state."""
+        if self._dialogue_session_active and _IS_TTY:
+            self._dialogue_move_to_anchor()
+
         print("─" * 80)
         self._hud_drawn = False
+        self._dialogue_session_active = False
+        self._dialogue_frame_lines = 0
+        self._dialogue_tail_lines = 0
 
     # ── System / explore mode ─────────────────────────────────────────────────
 
