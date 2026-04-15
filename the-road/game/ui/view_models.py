@@ -25,6 +25,15 @@ class SidebarSection:
 
 
 @dataclass
+class JournalView:
+    """Snapshot of objective and narrative note data for the journal screen."""
+
+    main_objective: str = ""
+    side_objectives: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+@dataclass
 class SceneView:
     """Renderer-facing snapshot for one frame."""
 
@@ -53,3 +62,4 @@ class SceneView:
 
     inspect_target: str = ""
     inspect_text: str = ""
+    journal: JournalView | None = None

@@ -1,12 +1,16 @@
-"""Screen composition helpers for fixed terminal layouts."""
+"""Rich screen composition helpers for persistent terminal layouts."""
 
 from __future__ import annotations
 
-import textwrap
 from dataclasses import dataclass
 from shutil import get_terminal_size
 
-from game.ui.view_models import SceneView, SidebarSection
+from rich.console import Group
+from rich.layout import Layout
+from rich.panel import Panel
+from rich.text import Text
+
+from game.ui.view_models import JournalView, SceneView, SidebarSection
 
 
 @dataclass
@@ -28,91 +32,101 @@ def compute_frame_spec() -> FrameSpec:
     left = max(56, int(cols * 0.72))
     right = max(24, cols - left - 3)
     left = cols - right - 3
-    bottom = 7
-    return FrameSpec(cols, rows, left, right, bottom, False)
+    return FrameSpec(cols, rows, left, right, 7, False)
 
 
-def _wrap_lines(lines: list[str], width: int) -> list[str]:
-    out: list[str] = []
-    for line in lines:
-        if not line.strip():
-            out.append("")
-            continue
-        out.extend(textwrap.wrap(line, width=width, replace_whitespace=False) or [""])
-    return out
+def _story_panel(view: SceneView) -> Panel:
+    body_lines = [line.rstrip() for line in view.main_lines if line is not None]
+    if not body_lines:
+        body_lines = [""]
+    return Panel(
+        Group(*[Text.from_markup(line) for line in body_lines]),
+        title=view.location_name or "Scene",
+        border_style="grey39",
+        padding=(0, 1),
+    )
 
 
-def _box(title: str, lines: list[str], width: int, height: int) -> list[str]:
-    title_text = f" {title} " if title else ""
-    top_fill = max(0, width - 2 - len(title_text))
-    top = "┌" + title_text + "─" * top_fill + "┐"
-    bot = "└" + "─" * (width - 2) + "┘"
-    inner_w = width - 2
-
-    wrapped = _wrap_lines(lines, inner_w - 2)
-    clipped = wrapped[: max(0, height - 2)]
-    while len(clipped) < max(0, height - 2):
-        clipped.append("")
-
-    body = [f"│ {row[:inner_w-2]:<{inner_w-2}} │" for row in clipped]
-    return [top, *body, bot]
-
-
-def _build_sidebar_lines(sections: list[SidebarSection], width: int, height: int) -> list[str]:
-    inner = width - 2
-    lines: list[str] = []
+def _sidebar_panel(sections: list[SidebarSection]) -> Panel:
+    rendered: list[Text] = []
     for idx, section in enumerate(sections):
         if idx > 0:
-            lines.append("")
-        lines.append(f"[{section.title}]")
+            rendered.append(Text(""))
+        rendered.append(Text(section.title.upper(), style="bold grey70"))
         if section.lines:
             for line in section.lines:
-                lines.extend(_wrap_lines([line], inner - 2))
+                rendered.append(Text(line))
         else:
-            lines.append("-")
-    return lines[: max(0, height - 2)]
+            rendered.append(Text("-", style="grey50"))
+    if not rendered:
+        rendered = [Text("No world data", style="grey50")]
+    return Panel(Group(*rendered), title="World", border_style="grey39", padding=(0, 1))
 
 
-def build_fixed_frame(view: SceneView) -> str:
-    spec = compute_frame_spec()
-    top_height = max(10, spec.height - spec.bottom_height - 2)
-
-    # Main story pane
-    main_lines = view.main_lines[:]
-    if view.speaker_name:
-        main_lines = [f"{view.speaker_name}", ""] + main_lines
+def _command_panel(view: SceneView) -> Panel:
+    lines: list[Text] = []
+    for i, action in enumerate(view.suggested_actions[:6], 1):
+        lines.append(Text(f"[{i}] {action}", style="grey70"))
+    if view.current_choices:
+        lines.append(Text(""))
+        for i, choice in enumerate(view.current_choices[:6], 1):
+            lines.append(Text(f"({i}) {choice}"))
     if view.footer_hint:
-        main_lines += ["", view.footer_hint]
+        lines.append(Text(""))
+        lines.append(Text(view.footer_hint, style="grey58"))
+    lines.append(Text(view.input_prompt or "> ", style="bold cyan"))
+    return Panel(Group(*lines), title="Commands", border_style="grey39", padding=(0, 1))
+
+
+def build_fixed_frame(view: SceneView) -> Layout:
+    spec = compute_frame_spec()
+    layout = Layout(name="root")
 
     if spec.small_terminal:
-        story = _box(view.location_name or "Scene", main_lines, spec.width, top_height)
-        sidebar_lines = _build_sidebar_lines(view.sidebar_sections, spec.width, top_height)
-        sidebar = _box("World", sidebar_lines, spec.width, min(12, top_height))
-        command_lines = []
-        for i, a in enumerate(view.suggested_actions[:4], 1):
-            command_lines.append(f"[{i}] {a}")
-        if view.current_choices:
-            command_lines.append("Choices: " + " | ".join(str(i + 1) for i in range(len(view.current_choices))))
-        command_lines.append(view.input_prompt)
-        command = _box("Commands", command_lines, spec.width, spec.bottom_height)
-        return "\n".join([*story, *sidebar, *command])
+        layout.split_column(
+            Layout(_story_panel(view), name="story", ratio=6),
+            Layout(_sidebar_panel(view.sidebar_sections), name="sidebar", size=10),
+            Layout(_command_panel(view), name="commands", size=spec.bottom_height),
+        )
+        return layout
 
-    left_lines = _box(view.location_name or "Scene", main_lines, spec.left_width, top_height)
-    sidebar_content = _build_sidebar_lines(view.sidebar_sections, spec.right_width, top_height)
-    right_lines = _box("World", sidebar_content, spec.right_width, top_height)
+    layout.split_column(
+        Layout(name="top", ratio=8),
+        Layout(_command_panel(view), name="commands", size=spec.bottom_height),
+    )
+    layout["top"].split_row(
+        Layout(_story_panel(view), name="story", ratio=7),
+        Layout(_sidebar_panel(view.sidebar_sections), name="sidebar", ratio=3),
+    )
+    return layout
 
-    combined_top = [
-        left_lines[i] + " " + right_lines[i]
-        for i in range(min(len(left_lines), len(right_lines)))
+
+def _journal_sections(journal: JournalView) -> Group:
+    notes = journal.notes or ["No notes discovered yet."]
+    side_objectives = journal.side_objectives or ["No side objectives."]
+    main_objective = journal.main_objective or "No main objective set."
+
+    rows: list[Text] = [
+        Text("Main Objective", style="bold"),
+        Text(main_objective),
+        Text(""),
+        Text("Side Objectives", style="bold"),
     ]
+    rows.extend(Text(f"• {item}") for item in side_objectives)
+    rows.extend([Text(""), Text("Notes", style="bold")])
+    rows.extend(Text(f"• {item}") for item in notes)
+    return Group(*rows)
 
-    command_lines: list[str] = []
-    for i, action in enumerate(view.suggested_actions[:4], 1):
-        command_lines.append(f"[{i}] {action}")
-    if view.current_choices:
-        for i, choice in enumerate(view.current_choices[:4], 1):
-            command_lines.append(f"[{i}] {choice}")
-    command_lines.append(view.input_prompt)
 
-    bottom = _box("Commands", command_lines, spec.width, spec.bottom_height)
-    return "\n".join([*combined_top, *bottom])
+def build_journal_overlay(view: SceneView) -> Layout:
+    journal = view.journal or JournalView()
+    layout = Layout(name="root")
+    body = Panel(
+        _journal_sections(journal),
+        title="Journal",
+        subtitle="Press Enter to return",
+        border_style="grey39",
+        padding=(1, 2),
+    )
+    layout.update(body)
+    return layout

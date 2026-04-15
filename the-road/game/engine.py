@@ -14,7 +14,7 @@ from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
 from game.ui import Renderer
-from game.ui.view_models import HudData, SceneView, SidebarSection
+from game.ui.view_models import HudData, JournalView, SceneView, SidebarSection
 from game.world import World
 
 
@@ -28,23 +28,26 @@ class GameEngine:
         self.renderer = Renderer()
 
     def run(self) -> None:
-        loaded = self._show_main_menu()
-        if not loaded:
-            self._show_intro()
-            self._prompt_player_name()
-            self.renderer.show_system(self.objectives.set_objective(self.state, "look_around"))
-            self.renderer.show_system("\nType 'look' to take in your room.")
+        try:
+            loaded = self._show_main_menu()
+            if not loaded:
+                self._show_intro()
+                self._prompt_player_name()
+                self._set_objective("look_around")
+                self.renderer.show_system("\nType 'look' to take in your room.")
 
-        while self.state.running:
-            view = self._build_view()
-            self.renderer.render(view)
-            raw = self.renderer.get_input()
-            if raw.strip().isdigit():
-                idx = int(raw.strip()) - 1
-                if 0 <= idx < len(view.suggested_actions):
-                    raw = view.suggested_actions[idx]
-            verb, arg = parse_command(raw)
-            self._handle_command(verb, arg)
+            while self.state.running:
+                view = self._build_view()
+                self.renderer.render(view)
+                raw = self.renderer.get_input()
+                if raw.strip().isdigit():
+                    idx = int(raw.strip()) - 1
+                    if 0 <= idx < len(view.suggested_actions):
+                        raw = view.suggested_actions[idx]
+                verb, arg = parse_command(raw)
+                self._handle_command(verb, arg)
+        finally:
+            self.renderer.close()
 
     # ── Startup ──────────────────────────────────────────────────────────────
 
@@ -113,7 +116,6 @@ class GameEngine:
     def _build_sidebar_sections(self, location_name: str) -> list[SidebarSection]:
         sections: list[SidebarSection] = [
             SidebarSection("Location", [location_name, self.state.time_label]),
-            SidebarSection("Objective", [self.state.current_objective or "No active objective"]),
             SidebarSection(
                 "Player",
                 [
@@ -139,7 +141,7 @@ class GameEngine:
         sections.append(
             SidebarSection(
                 "Hint",
-                ["Type a number for obvious actions or type any command."],
+                ["Type a number, or type any command.", "Use 'journal' for objectives and notes."],
             )
         )
         return sections
@@ -219,6 +221,7 @@ class GameEngine:
             "load":      self._cmd_load,
             "help":      self._cmd_help,
             "objective": self._cmd_objective,
+            "journal":   self._cmd_journal,
             "threat":    self._cmd_threat,
             "status":    self._cmd_status,
             "quit":      self._cmd_quit,
@@ -230,6 +233,15 @@ class GameEngine:
             return
 
         handler(arg)
+
+    def _set_objective(self, key: str, *, added: bool = False) -> None:
+        previous_objective = self.state.current_objective
+        message = self.objectives.set_objective(self.state, key, added=added)
+        self.renderer.show_system(message)
+        if previous_objective and previous_objective not in self.state.side_objectives:
+            self.state.side_objectives.append(previous_objective)
+        if self.state.current_objective and self.state.current_objective not in self.state.journal_notes:
+            self.state.journal_notes.append(self.state.current_objective)
 
     # ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -420,9 +432,7 @@ class GameEngine:
                 )
                 session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
-                self.renderer.show_system(
-                    self.objectives.set_objective(self.state, "deliver_codex", added=True)
-                )
+                self._set_objective("deliver_codex", added=True)
                 self.renderer.show_system("\nType 'go mystic trail' to head out.")
                 return
 
@@ -443,9 +453,7 @@ class GameEngine:
                     ])],
                 ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
-                self.renderer.show_system(
-                    self.objectives.set_objective(self.state, "mom_blessing")
-                )
+                self._set_objective("mom_blessing")
                 return
 
             # Scene 4+ follow-up
@@ -520,9 +528,7 @@ class GameEngine:
                 )
                 session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
-                self.renderer.show_system(
-                    self.objectives.set_objective(self.state, "find_bob", added=True)
-                )
+                self._set_objective("find_bob", added=True)
                 return
 
             # ── Subsequent visits — still use Dialogue Mode for consistency ───
@@ -774,6 +780,7 @@ class GameEngine:
         lines += [
             "  log                      — show recent exploration log",
             "  objective                — show current objective",
+            "  journal                  — open objective + notes journal",
             "  threat                   — render threat/combat UI shell (preview)",
             "  save / load              — save or restore your progress",
             "  help                     — show this list",
@@ -787,6 +794,18 @@ class GameEngine:
         else:
             self.renderer.show_system("No objective set.")
         self.renderer.show_system(f"Current time: {format_time_label(self.state)}")
+
+    def _cmd_journal(self, _arg: str) -> None:
+        view = SceneView(
+            current_mode="journal",
+            journal=JournalView(
+                main_objective=self.state.current_objective,
+                side_objectives=self.state.side_objectives,
+                notes=self.state.journal_notes,
+            ),
+        )
+        self.renderer.render(view)
+        self.renderer.get_input("\nPress Enter to return... ")
 
     def _cmd_threat(self, _arg: str) -> None:
         """Developer-facing preview of the threat/combat presentation shell."""
@@ -864,7 +883,7 @@ class GameEngine:
         if location_id == "living_room" and not self.state.flags["met_mother"]:
             self.state.flags["met_mother"] = True
             self.renderer.show_system("\nYour mom is here, in her chair. She hears you come down.")
-            self.renderer.show_system(self.objectives.set_objective(self.state, "talk_to_mom"))
+            self._set_objective("talk_to_mom")
 
         elif location_id == "front_door":
             if not self.state.flags["mom_talked"]:
@@ -902,9 +921,7 @@ class GameEngine:
                 'You hand over the parcel. He exhales. "So he finally sent it."',
                 'He nods back toward town. "Go see Bob. It\'s overdue."',
             ])
-            self.renderer.show_system(
-                self.objectives.set_objective(self.state, "return_to_dome")
-            )
+            self._set_objective("return_to_dome")
 
     # ── House → Town transition ───────────────────────────────────────────────
 
@@ -946,7 +963,5 @@ class GameEngine:
                 '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
             ],
         ))
-        self.renderer.show_system(
-            self.objectives.set_objective(self.state, "enter_dome", added=True)
-        )
+        self._set_objective("enter_dome", added=True)
         self.renderer.show_system("\nType 'enter' to step inside.")
