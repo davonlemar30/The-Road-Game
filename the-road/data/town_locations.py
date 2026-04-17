@@ -307,7 +307,7 @@ TOWN_NODES: dict[str, dict] = {
             "Fog lies in pale bands over the water and the distant brush. This is the kind of place "
             "people come to think too long in. The town feels far away from here, even though it isn't."
         ),
-        "neighbors": ["mystic_trail_split", "mystic_trail_deep"],
+        "neighbors": ["mystic_trail_split", "mystic_trail_deep", "mystic_trail_safe_hollow"],
         "interactables": {
             "lake": "Still enough to feel like it's listening.",
             "ledge": "A natural pause point. People have stood here long enough to smooth the stone.",
@@ -317,6 +317,26 @@ TOWN_NODES: dict[str, dict] = {
         },
         "visible_npcs": ["Nate"],
         "points_of_interest": ["Rocky ledge", "Lake view", "Lower treeline"],
+    },
+    "mystic_trail_safe_hollow": {
+        "name": "Mystic Trail Safe Hollow",
+        "aliases": {"safe hollow", "hollow", "camp", "shelter", "trail hollow"},
+        "description": (
+            "A shallow pocket of ground tucked below the overlook, screened by low stone and bent "
+            "branches. The lake is close enough to hear, but the line of sight from the main trail "
+            "is broken. It's not truly safe. It's just the first place that feels less exposed."
+        ),
+        "neighbors": ["mystic_trail_overlook"],
+        "interactables": {
+            "ground": "Soft enough to bed down, uneven enough to remind you this is temporary.",
+            "stones": "Flat, dark stones ring a spot where someone made a small fire once.",
+            "branches": "Low deadfall and broken limbs — enough to patch windbreak cover.",
+            "water": "A narrow runoff channel feeds down toward the lake. Cleaner near the upstream rocks.",
+            "old fire ring": "A rough ring of old ash and stones. Reusable if you keep it small.",
+            "fire ring": "A rough ring of old ash and stones. Reusable if you keep it small.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Sheltered hollow", "Runoff water", "Old fire ring"],
     },
     "mystic_trail_creek_bend": {
         "name": "Mystic Trail Creek Bend",

@@ -13,6 +13,9 @@ class GameState:
     running: bool = True
     current_objective: str = ""
     money: int = 12
+    hunger: int = 0
+    thirst: int = 0
+    fatigue: int = 0
     day: int = 1
     minutes_since_midnight: int = 8 * 60
     inventory: list[str] = field(default_factory=list)
@@ -38,7 +41,34 @@ class GameState:
             "codex_delivered": False,    # Scene 3 — Nate's Codex handed off
             "scene3_started": False,
             "scene3_completed": False,
+            "scene4_started": False,
+            "scene4_completed": False,
             "met_nate_at_overlook": False,
+            "nate_needs_rest": False,
+            "camp_setup_needed": False,
+            "water_secured": False,
+            "camp_secured": False,
+            "campfire_lit": False,
+            "camp_kept_dark": False,
+            "nate_stable_enough_to_talk": False,
+            "nate_recovery_talk_complete": False,
+            "survival_system_unlocked": False,
+            "survival_system_unlocked_intro_shown": False,
+            "camping_unlocked": False,
+            "parcel_delivered_to_nate": False,
+            "dreamleaf_hint_received": False,
+            "jenn_kickback_seeded": False,
+            "audri_lake_lore_heard": False,
+            "murkmind_helped_find_water": False,
+            "murkmind_helped_choose_camp": False,
+            "camp_handled_carefully": False,
+            "camp_handled_poorly": False,
+            "audri_interest_deflected": False,
+            "audri_interest_silence": False,
+            "audri_interest_admitted": False,
+            "dreamleaf_goal_romanticized": False,
+            "dreamleaf_goal_self_worth": False,
+            "dreamleaf_goal_training": False,
             "saw_fog_boundary": False,
             "starter_attuned": False,
             "first_rival_battle_done": False,

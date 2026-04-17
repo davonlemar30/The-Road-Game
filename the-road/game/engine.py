@@ -159,6 +159,15 @@ class GameEngine:
         actions = ["look", "where", "inventory", "help"]
 
         if self.state.flags["in_town"]:
+            if (
+                self.state.flags.get("scene4_started")
+                and not self.state.flags.get("scene4_completed")
+                and self.state.current_location == "mystic_trail_safe_hollow"
+            ):
+                actions.extend(["inspect water", "gather water", "prepare camp", "rest"])
+                if not self.state.flags.get("campfire_lit"):
+                    actions.append("light fire")
+                return actions[:6]
             node = self.town.get_node(self.state.current_location)
             neighbors = node.get("neighbors", [])[:2]
             for neighbor_id in neighbors:
@@ -327,6 +336,16 @@ class GameEngine:
         if not target:
             self.renderer.show_system(
                 "Go where? Example: go square  /  go keeper's dome  /  go market"
+            )
+            return
+
+        if (
+            self.state.flags.get("scene4_started")
+            and not self.state.flags.get("scene4_completed")
+            and self.state.current_location == "mystic_trail_safe_hollow"
+        ):
+            self.renderer.show_system(
+                "You can't move Nate yet. Secure water, prepare camp, then rest."
             )
             return
 
@@ -880,6 +899,9 @@ class GameEngine:
 
         If zero or multiple NPCs are present, fall back to the standard error.
         """
+        if self._handle_scene4_action(verb, arg):
+            return
+
         npcs_here = [
             npc_id for npc_id, data in NPCS.items()
             if data["location"] == self.state.current_location
@@ -1001,17 +1023,20 @@ class GameEngine:
         self.renderer.show_lines(
             [
                 "",
-                "You can't leave him here.",
-                "You get your shoulder under his arm and lift.",
+                "You can't move him all the way back to town like this.",
+                "You get your shoulder under his arm and drag him off the open overlook.",
                 "",
-                "The trail back to Iso Town is long. Keeper Bob needs to see this.",
+                "Below the ridge, you find a shallow hollow screened by stone and low branches.",
+                "Not safe. Just safer.",
             ]
         )
 
-        if "Nate's Codex Parcel" in self.state.inventory:
-            self.state.inventory.remove("Nate's Codex Parcel")
-        self.state.flags["codex_delivered"] = True
         self.state.flags["scene3_completed"] = True
+        self.state.flags["scene4_started"] = True
+        self.state.flags["nate_needs_rest"] = True
+        self.state.flags["camp_setup_needed"] = True
+        self.state.flags["survival_system_unlocked"] = True
+        self.state.flags["camping_unlocked"] = True
         if "Murkmind" not in self.state.companions:
             self.state.companions.append("Murkmind")
         if find_owned(self.state, MURKMIND_SCENE3_INSTANCE_ID) is None:
@@ -1019,7 +1044,218 @@ class GameEngine:
         if self.state.active_astari_instance_id is None:
             self.state.active_astari_instance_id = MURKMIND_SCENE3_INSTANCE_ID
         self.town.get_node("mystic_trail_overlook")["visible_npcs"] = []
-        self._set_objective("nate_home_from_ambush")
+        self.state.current_location = "mystic_trail_safe_hollow"
+        if "mystic_trail_safe_hollow" not in self.state.discovered_locations:
+            self.state.discovered_locations.append("mystic_trail_safe_hollow")
+        self._set_objective("stabilize_nate")
+        self._scene4_camp_hook()
+
+    def _scene4_camp_hook(self) -> None:
+        self.renderer.show_lines(
+            [
+                "",
+                "You lower Nate onto a bed of branches and old canvas scraps.",
+                "His breathing is still uneven. Skin too cold. Pulse too thin.",
+                "You're not getting him back to Iso Town tonight.",
+                "",
+                "Murkmind settles near the stones, angled toward the dark trail.",
+                "Watching. Waiting.",
+            ]
+        )
+        if not self.state.flags.get("survival_system_unlocked_intro_shown", False):
+            self.renderer.show_system("New systems unlocked: Hunger, Thirst, Fatigue")
+            self.renderer.show_system("Stabilize Nate: secure water and prepare camp.")
+            self.state.flags["survival_system_unlocked_intro_shown"] = True
+
+    def _handle_scene4_action(self, verb: str, arg: str) -> bool:
+        if not self.state.flags.get("scene4_started") or self.state.flags.get("scene4_completed"):
+            return False
+        if self.state.current_location != "mystic_trail_safe_hollow":
+            return False
+
+        raw = f"{verb} {arg}".strip().lower()
+        if raw == "gather water":
+            self._scene4_gather_water()
+            return True
+        if raw == "prepare camp":
+            self._scene4_prepare_camp()
+            return True
+        if raw == "light fire":
+            self._scene4_light_fire()
+            return True
+        if raw in {"rest", "wait"}:
+            self._scene4_rest()
+            return True
+        return False
+
+    def _scene4_gather_water(self) -> None:
+        if self.state.flags.get("water_secured"):
+            self.renderer.show_system("You've already secured enough water for now.")
+            return
+        if not self.state.flags.get("murkmind_helped_find_water"):
+            self.renderer.show_lines(
+                [
+                    "Murkmind drifts toward a narrow runoff line and goes still.",
+                    "Upstream by the rocks, the water runs clearer.",
+                ]
+            )
+            self.state.flags["murkmind_helped_find_water"] = True
+        self.state.flags["water_secured"] = True
+        self.state.thirst = max(0, self.state.thirst - 1)
+        self.state.thirst += 1
+        self.state.fatigue += 1
+        self.renderer.show_system("You fill what you can and ration enough clean water for the night.")
+        self._scene4_check_progress()
+
+    def _scene4_prepare_camp(self) -> None:
+        if self.state.flags.get("camp_secured"):
+            self.renderer.show_system("The shelter is already as secure as it's going to get.")
+            return
+        if not self.state.flags.get("murkmind_helped_choose_camp"):
+            self.renderer.show_lines(
+                [
+                    "Murkmind circles once above the hollow, then settles by a stone lip.",
+                    "Less wind. Less line of sight from the ridge.",
+                ]
+            )
+            self.state.flags["murkmind_helped_choose_camp"] = True
+        self.state.flags["camp_secured"] = True
+        self.state.hunger += 1
+        self.state.fatigue += 1
+        self.renderer.show_system("You brace branches, clear ground, and build rough cover for Nate.")
+        self._scene4_check_progress()
+
+    def _scene4_light_fire(self) -> None:
+        if self.state.flags.get("campfire_lit"):
+            self.renderer.show_system("The fire is already lit and controlled.")
+            return
+        self.state.flags["campfire_lit"] = True
+        self.renderer.show_system("You coax a small fire to life in the old ring: warmth over stealth.")
+
+    def _scene4_rest(self) -> None:
+        if not self.state.flags.get("water_secured") or not self.state.flags.get("camp_secured"):
+            self.state.flags["camp_handled_poorly"] = True
+            self.renderer.show_system("Not yet. Nate needs water and real shelter first.")
+            return
+        if not self.state.flags.get("campfire_lit"):
+            self.state.flags["camp_kept_dark"] = True
+            self.renderer.show_lines(
+                [
+                    "You keep the hollow dark.",
+                    "Murkmind's casing gives off a faint pulse, enough to watch Nate's breathing by.",
+                ]
+            )
+        self.state.flags["camp_handled_carefully"] = True
+        self.state.flags["nate_stable_enough_to_talk"] = True
+        self.state.flags["camp_setup_needed"] = False
+        self.state.fatigue = max(0, self.state.fatigue - 1)
+        self.state.hunger += 1
+        self.state.thirst += 1
+        advance_time(self.state, 90)
+        self._set_objective("wait_for_nate")
+        self._scene4_trigger_nate_talk()
+
+    def _scene4_check_progress(self) -> None:
+        if self.state.flags.get("water_secured") and self.state.flags.get("camp_secured"):
+            self.renderer.show_system("Nate is stable for now. Try 'rest' when you're ready to hold the night.")
+            return
+        missing = []
+        if not self.state.flags.get("water_secured"):
+            missing.append("water")
+        if not self.state.flags.get("camp_secured"):
+            missing.append("shelter")
+        self.renderer.show_system(f"Still needed: {', '.join(missing)}.")
+
+    def _scene4_trigger_nate_talk(self) -> None:
+        if self.state.flags.get("nate_recovery_talk_complete"):
+            return
+
+        self.renderer.show_lines(
+            [
+                "",
+                "Near dawn, Nate's breathing evens out.",
+                "He opens one eye, then both, tracking the hollow before he focuses on you.",
+                "",
+                "\"...You stayed,\" he says.",
+                "\"You were supposed to drag me out, not set up a whole camp.\"",
+                "",
+                "Murkmind shifts in the edge of your vision.",
+                "Nate tenses, then exhales when it doesn't move on him.",
+                "\"That thing's with you now?\"",
+                "\"Keep it close. Respectful. It'll return the favor.\"",
+            ]
+        )
+
+        if "Nate's Codex Parcel" in self.state.inventory:
+            self.state.inventory.remove("Nate's Codex Parcel")
+            self.state.flags["parcel_delivered_to_nate"] = True
+            self.state.flags["codex_delivered"] = True
+            self.renderer.show_lines(
+                [
+                    "",
+                    "You hand him the parcel from Bob.",
+                    "Nate stares at it, then laughs once through his teeth.",
+                    "\"My Codex. I thought Bob gave up on me.\"",
+                    "He runs a thumb across the seal and goes quiet.",
+                ]
+            )
+
+        self.renderer.show_lines(
+            [
+                "",
+                "\"Saw Audri at the Dome?\" Nate asks without looking up.",
+                "\"Don't answer. I can already see it on your face.\"",
+            ]
+        )
+        audri_choice = run_scene_choice(self.state, "audri_interest_response", renderer=self.renderer)
+        if audri_choice == "deflect":
+            self.state.flags["audri_interest_deflected"] = True
+        elif audri_choice == "stay_quiet":
+            self.state.flags["audri_interest_silence"] = True
+        elif audri_choice == "admit_it":
+            self.state.flags["audri_interest_admitted"] = True
+
+        self.renderer.show_lines(
+            [
+                "",
+                "\"You remember that old day by the lake?\" Nate says.",
+                "\"Before all this. You skipped stones, she sketched the waterline, and I lied about not being cold.\"",
+                "He gives a tired grin that doesn't last.",
+                "\"Point is — she doesn't care about big talk. She notices what you carry back.\"",
+                "",
+                "\"Jenn still runs that kickback table by the market's back awning,\" he adds.",
+                "\"Dreamleaf moves fast there. Bring some in and she'll pay clean if it isn't bruised.\"",
+                "",
+                "\"But hear me: the Forbidden Trail warning signs are old, not wrong.\"",
+                "\"Fog out there doesn't just hide things. It leans on your head. Makes good plans sloppy.\"",
+                "Murkmind gives a low, almost disapproving thrum at the word forbidden.",
+            ]
+        )
+        self.state.flags["audri_lake_lore_heard"] = True
+        self.state.flags["dreamleaf_hint_received"] = True
+        self.state.flags["jenn_kickback_seeded"] = True
+
+        motivation_choice = run_scene_choice(self.state, "dreamleaf_motivation", renderer=self.renderer)
+        if motivation_choice == "for_audri":
+            self.state.flags["dreamleaf_goal_romanticized"] = True
+        elif motivation_choice == "prove_something":
+            self.state.flags["dreamleaf_goal_self_worth"] = True
+        elif motivation_choice == "murkmind_training":
+            self.state.flags["dreamleaf_goal_training"] = True
+
+        self.renderer.show_lines(
+            [
+                "",
+                "Nate leans back against the stone, exhausted.",
+                "\"I'm not dead. That's your win for tonight.\"",
+                "\"Now go get your miracle leaf and try not to become a story people tell wrong.\"",
+            ]
+        )
+
+        self.state.flags["nate_needs_rest"] = False
+        self.state.flags["nate_recovery_talk_complete"] = True
+        self.state.flags["scene4_completed"] = True
+        self._set_objective("find_dreamleaf")
 
     def _run_scene3_murkmind_encounter(self):
         player = build_player_starter()
