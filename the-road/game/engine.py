@@ -10,6 +10,7 @@ from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import SAVE_FILE, load_game, save_game
+from game.choices import run_scene_choice
 from game.combat.data import build_murkmind, build_player_starter
 from game.combat.engine import BattleEngine, Scene3MurkmindScript
 from game.combat.models import BattleState
@@ -938,102 +939,99 @@ class GameEngine:
             self._scene3_overlook_hook()
 
     def _scene3_overlook_hook(self) -> None:
-        if "Nate's Codex Parcel" in self.state.inventory:
-            self.state.inventory.remove("Nate's Codex Parcel")
-        self.state.flags["codex_delivered"] = True
+        # Scene 3 — Lake Ambush at the Mystic Trail Overlook.
+        # State mutations happen only AFTER a successful scripted capture.
         self.state.flags["scene3_started"] = True
         self.state.flags["met_nate_at_overlook"] = True
-        if "Standard Cube" not in self.state.inventory:
-            self.state.inventory.append("Standard Cube")
+
+        self.renderer.show_lines(
+            [
+                "",
+                "The overlook is wrong before you crest it.",
+                "Fog sits too heavy on the lake. The trail stones are slick with it.",
+                "",
+                "Nate is down against the ridge stone, one arm wrapped across his ribs.",
+                "His Astari is curled beside him, breathing fast and shallow.",
+                "",
+                "He sees you. His eyes go wide.",
+                "",
+                "\"Run,\" he forces out. \"It's still here.\"",
+            ]
+        )
+
+        run_scene_choice(self.state, "nate_ambush_response", renderer=self.renderer)
+
+        self.renderer.show_lines(
+            [
+                "",
+                "The fog at the waterline peels back.",
+                "Something steps out of it — all pressure and wrong angles.",
+                "Murkmind.",
+            ]
+        )
 
         result = self._run_scene3_murkmind_encounter()
         if result.result_type != "captured":
             self.renderer.show_lines(
                 [
                     "",
-                    "Murkmind peels back into the fog.",
-                    "The overlook goes quiet, but unfinished.",
-                    "You can regroup and try again.",
+                    "The moment slips. The overlook is not done with you yet.",
                 ]
             )
             return
 
+        self.renderer.show_lines(
+            [
+                "",
+                "The Cube settles on the stone, still warm from the seal.",
+                "The pressure releases from the air all at once.",
+                "",
+                "Nate hasn't moved. His Astari is still curled beside him.",
+                "Pulse there. Breathing. Not awake.",
+            ]
+        )
+
+        run_scene_choice(self.state, "post_capture_priority", renderer=self.renderer)
+
+        self.renderer.show_lines(
+            [
+                "",
+                "You can't leave him here.",
+                "You get your shoulder under his arm and lift.",
+                "",
+                "The trail back to Iso Town is long. Keeper Bob needs to see this.",
+            ]
+        )
+
+        if "Nate's Codex Parcel" in self.state.inventory:
+            self.state.inventory.remove("Nate's Codex Parcel")
+        self.state.flags["codex_delivered"] = True
         self.state.flags["scene3_completed"] = True
-        self.renderer.show_lines([
-            "The Cube settles in your hand, still warm from the seal.",
-            "",
-            "Nate drags himself upright, breathing hard but steady now.",
-            "",
-            "\"You actually pulled it off,\" he says, still staring at the Cube.",
-            "",
-            "The overlook is the same as ever — fog below, lake light above — but the pressure is gone.",
-            "",
-            "You hand over the parcel without ceremony. He takes it, feels the weight, and his expression shifts.",
-            "",
-            "\"...He sent my Codex.\"",
-            "",
-            "He doesn't open it. Just holds it for a second, like a question he wasn't ready for.",
-            "",
-            "Then he pivots.",
-            "",
-            "\"You were at the Dome when Audri came through, weren't you.\"",
-            "",
-            "It's not really a question.",
-            "",
-            "He looks back toward the lake.",
-            "",
-            "\"She used to come up here barefoot. Before the first Crest. Just sit by the water like she was listening to something the rest of us couldn't hear.\"",
-            "",
-            "A pause.",
-            "",
-            "\"Getting that first Astari changed her. Pulled her toward the League, away from all of this. Away from the people who knew her before she became someone.\"",
-            "",
-            "Then he shifts, fully Nate again.",
-            "",
-            "\"She'll be at Jenn's place tonight. The kickback.\"",
-            "",
-            "He watches you.",
-            "",
-            "\"You could show up. But showing up empty-handed? That's just showing up as yourself, and right now yourself is... what exactly?\"",
-            "",
-            "He grins, but not enough to soften it.",
-            "",
-            "\"Dreamleaf. She still likes it. Grows in the Forbidden Trail — real Dreamleaf, not the dried stuff from the market. You want to say something without saying something, that's how you do it.\"",
-            "",
-            "Then he puts the smile away.",
-            "",
-            "\"But you can't go into the Forbidden Trail without an Astari. That's not me being dramatic, that's just the truth. You go past the fog without a partner, you don't come back the same. Or you just don't come back.\"",
-            "",
-            "He stands.",
-            "",
-            "\"Stop by the Dome, man. It's been long overdue.\"",
-            "",
-            "He walks down the trail without looking back.",
-        ])
+        if "Murkmind" not in self.state.companions:
+            self.state.companions.append("Murkmind")
         self.town.get_node("mystic_trail_overlook")["visible_npcs"] = []
-        self._set_objective("return_to_dome")
+        self._set_objective("nate_home_from_ambush")
 
     def _run_scene3_murkmind_encounter(self):
         player = build_player_starter()
         enemy = build_murkmind()
-        cubes = self.state.inventory.count("Standard Cube")
 
         battle = BattleState(
             player_active=player,
             enemy_active=enemy,
-            battle_kind="wild",
-            player_cubes=cubes,
+            battle_kind="scripted",
+            player_cubes=0,
             notes={"scene3_murkmind": True},
         )
-        script = Scene3MurkmindScript()
-        engine = BattleEngine(self.renderer)
-        result = engine.run(battle, script=script)
 
-        used_cubes = cubes - battle.player_cubes
-        for _ in range(max(0, used_cubes)):
-            if "Standard Cube" in self.state.inventory:
-                self.state.inventory.remove("Standard Cube")
-        return result
+        def _pressure_spike_choice(_battle: BattleState) -> None:
+            run_scene_choice(
+                self.state, "murkmind_pressure_response", renderer=self.renderer
+            )
+
+        script = Scene3MurkmindScript(on_pressure_spike=_pressure_spike_choice)
+        engine = BattleEngine(self.renderer)
+        return engine.run(battle, script=script)
 
     def _handle_fog_boundary_attempt(self) -> None:
         self.state.flags["saw_fog_boundary"] = True

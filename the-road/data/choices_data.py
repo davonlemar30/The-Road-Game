@@ -212,4 +212,155 @@ SCENE_CHOICES = {
             },
         ],
     },
+
+    # ── Scene 3: Lake Ambush at the Overlook ─────────────────────────────────
+    # Canon reference: Scene 3 – Nate at the Mystic Trail Overlook (ClickUp)
+    # Hidden-state only: outcomes identical, deltas shape later scenes.
+
+    # Beat 1 — Nate gasps the warning before Murkmind reveals itself.
+    "nate_ambush_response": {
+        "prompt_lines": [
+            "Nate's breath rattles. His hand trembles toward the fog.",
+            "\"Run,\" he manages. \"It's still here.\"",
+        ],
+        "options": [
+            {
+                "id": "stay_with_nate",
+                "text": "I'm not leaving you. Stay down.",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 1},
+                    "disposition": -1,
+                    "history": ["scene3_stay_with_nate"],
+                },
+                "response_lines": [
+                    "You plant yourself between him and the fog.",
+                ],
+            },
+            {
+                "id": "face_the_threat",
+                "text": "Where is it? I'll meet it.",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 0},
+                    "disposition": 1,
+                    "history": ["scene3_face_the_threat"],
+                },
+                "response_lines": [
+                    "You step forward, eyes hunting the ridge line.",
+                ],
+            },
+            {
+                "id": "freeze_at_warning",
+                "text": "[Freeze — the word doesn't land.]",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 0},
+                    "disposition": -1,
+                    "history": ["scene3_freeze_at_warning"],
+                },
+                "response_lines": [
+                    "Your legs lock. The fog keeps moving.",
+                ],
+            },
+        ],
+    },
+
+    # Beat 2 — Mid-battle pressure spike, before the Switch pulse fires.
+    "murkmind_pressure_response": {
+        "prompt_lines": [
+            "Pressure rings the overlook. Your thoughts skid.",
+            "Nate coughs, blood on his teeth.",
+        ],
+        "options": [
+            {
+                "id": "anchor_on_nate",
+                "text": "[Anchor on Nate. Keep him breathing.]",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 1},
+                    "disposition": -1,
+                    "history": ["scene3_anchor_on_nate"],
+                },
+                "response_lines": [
+                    "You lock onto his voice and the spike loses its edge.",
+                ],
+            },
+            {
+                "id": "lock_into_survival",
+                "text": "[Lock into the fight. One clean read.]",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 0},
+                    "disposition": 1,
+                    "history": ["scene3_lock_into_survival"],
+                },
+                "response_lines": [
+                    "The noise flattens to a single line. You read the next move.",
+                ],
+            },
+            {
+                "id": "push_back_angrily",
+                "text": "[Shove the pressure back with spite.]",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 0},
+                    "disposition": 2,
+                    "history": ["scene3_push_back_angrily"],
+                },
+                "response_lines": [
+                    "Heat flares in your chest. The fog recoils a step.",
+                ],
+            },
+        ],
+    },
+
+    # Beat 3 — Capture just sealed. Murkmind is down, Nate is still down.
+    "post_capture_priority": {
+        "prompt_lines": [
+            "The Cube stops rattling. The overlook is quiet.",
+            "Nate hasn't moved.",
+        ],
+        "options": [
+            {
+                "id": "check_nate_first",
+                "text": "Nate first. Cube can wait.",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 1},
+                    "disposition": -1,
+                    "history": ["scene3_check_nate_first"],
+                },
+                "response_lines": [
+                    "You drop beside him. His pulse is there — faint, but there.",
+                ],
+            },
+            {
+                "id": "study_cube_first",
+                "text": "Lift the Cube. Understand what just happened.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 0},
+                    "disposition": 0,
+                    "history": ["scene3_study_cube_first"],
+                },
+                "response_lines": [
+                    "The Cube is warm. Something is alive inside it.",
+                ],
+            },
+            {
+                "id": "check_nate_astari_too",
+                "text": "Check Nate. Then check his Astari.",
+                "effects": {
+                    "reputation": 1,
+                    "relationships": {"nate": 1},
+                    "disposition": 0,
+                    "history": ["scene3_check_nate_astari_too"],
+                },
+                "response_lines": [
+                    "His pulse holds. His Astari is curled beside him, still breathing.",
+                ],
+            },
+        ],
+    },
 }

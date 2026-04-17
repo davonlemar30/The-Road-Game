@@ -10,4 +10,5 @@ OBJECTIVES = {
     "deliver_codex":  "Deliver Nate's Codex. Find him at Mystic Trail.",
     "return_to_dome": "Return to the Keeper's Dome.",
     "mom_blessing":   "Talk to your mom, then return to Keeper Bob.",
+    "nate_home_from_ambush": "Get Nate back to Iso Town. Return to Keeper Bob.",
 }

@@ -21,8 +21,9 @@ class GameState:
     discovered_locations: list[str] = field(default_factory=list)
     reputation: int = 0
     disposition: int = 0
-    relationships: dict[str, int] = field(default_factory=lambda: {"mom": 0, "bob": 0})
+    relationships: dict[str, int] = field(default_factory=lambda: {"mom": 0, "bob": 0, "nate": 0})
     choice_history: set[str] = field(default_factory=set)
+    companions: list[str] = field(default_factory=list)
     flags: dict[str, bool] = field(
         default_factory=lambda: {
             "met_mother": False,

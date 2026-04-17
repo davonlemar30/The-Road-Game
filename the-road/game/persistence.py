@@ -31,6 +31,7 @@ def save_game(state: GameState) -> str:
         "relationships": state.relationships,
         "choice_history": sorted(state.choice_history),
         "flags": state.flags,
+        "companions": state.companions,
     }
     with open(SAVE_FILE, "w") as f:
         json.dump(data, f, indent=2)
@@ -66,6 +67,7 @@ def load_game() -> tuple[bool, Union[GameState, str]]:
         # Merge saved flags into defaults so new flags don't break old saves
         saved_flags = data.get("flags", {})
         state.flags.update(saved_flags)
+        state.companions = data.get("companions", [])
         return True, state
     except (json.JSONDecodeError, KeyError) as e:
         return False, f"Save file corrupted: {e}"

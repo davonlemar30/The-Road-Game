@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import Callable, Optional
 
 from game.combat.data import CUBE_MODIFIERS
 from game.combat.models import BattleResult, BattleState, Combatant, Move
@@ -25,23 +26,37 @@ class Action:
 
 
 class Scene3MurkmindScript:
-    """Semi-scripted beats layered over the shared battle loop."""
+    """Canon-driven wrapper around the 1v1 loop for the Lake Ambush.
 
-    def __init__(self) -> None:
+    - Turn 2: pressure spike narration + outer pressure-spike choice hook.
+    - Turn 3: forced capture sequence (Switch pulse → Nate signals → Cube from bag).
+    - Lethal hits on the player are clamped to leave 1 HP before the capture fires;
+      canon Scene 3: GP is outmatched but "keeps finding their feet" until the window.
+    """
+
+    def __init__(
+        self,
+        on_pressure_spike: Optional[Callable[[BattleState], None]] = None,
+    ) -> None:
         self.pressure_spike_triggered = False
-        self.switch_pulse_triggered = False
-        self.bag_signal_triggered = False
-        self.capture_forced = False
+        self.capture_sequence_triggered = False
+        self.on_pressure_spike = on_pressure_spike
+        self._pressure_hook_fired = False
 
     def opening_lines(self) -> list[str]:
         return [
-            "Nate is down hard against the ridge stone, breath ragged.",
-            "Murkmind twists the fog at the overlook and closes in.",
             "This is not clean. This is survival.",
         ]
 
-    def on_turn_start(self, battle: BattleState) -> list[str]:
+    def on_turn_start(self, battle: BattleState) -> tuple[list[str], str | None]:
+        """Return (narration_lines, forced_result) for this turn.
+
+        forced_result == "captured" tells the engine to run the scripted
+        capture sequence instead of a normal exchange.
+        """
         lines: list[str] = []
+        forced_result: str | None = None
+
         if battle.turn_number == 2 and not self.pressure_spike_triggered:
             self.pressure_spike_triggered = True
             lines.extend(
@@ -50,74 +65,98 @@ class Scene3MurkmindScript:
                     "Bob's Switch starts to hum in your pocket.",
                 ]
             )
-        return lines
+        if battle.turn_number == 3 and not self.capture_sequence_triggered:
+            self.capture_sequence_triggered = True
+            forced_result = "captured"
+        return lines, forced_result
 
-    def on_enemy_will_break(self) -> list[str]:
-        lines: list[str] = []
-        if not self.switch_pulse_triggered:
-            self.switch_pulse_triggered = True
-            self.bag_signal_triggered = True
-            self.capture_forced = True
-            lines.extend(
-                [
-                    "You trigger the Switch pulse — resonance snaps out of phase.",
-                    "Murkmind buckles and drops to the ground.",
-                    "Nate jerks up and slaps the bag: 'Now. Cube. Throw it.'",
-                ]
-            )
-        return lines
+    def capture_narration(self) -> list[str]:
+        return [
+            "You trigger the Switch pulse — resonance snaps out of phase.",
+            "Murkmind buckles and drops hard to the stone.",
+            "Nate jerks half-upright. 'Now. Cube. My bag — throw it.'",
+            "You pull a Cube from Nate's bag and send it in one clean arc.",
+            "The Cube seals with a hard flash. Captured.",
+            "Nate slumps back. He doesn't get up.",
+        ]
 
-    def should_force_capture(self) -> bool:
-        return self.capture_forced
-
-    def consume_force_capture(self) -> None:
-        self.capture_forced = False
+    def protect_player(self, player: Combatant, incoming_damage: int) -> int:
+        """Clamp lethal damage so the scripted fight can't end the player before
+        the capture window. Leaves exactly 1 HP on an otherwise-lethal hit."""
+        if self.capture_sequence_triggered:
+            return incoming_damage
+        if player.current_hp - incoming_damage <= 0:
+            return max(0, player.current_hp - 1)
+        return incoming_damage
 
 
 class BattleEngine:
     def __init__(self, renderer, rng: random.Random | None = None) -> None:
         self.output = BattleRenderer(renderer)
         self.rng = rng or random.Random()
+        self._script: Scene3MurkmindScript | None = None
 
     def run(self, battle: BattleState, script: Scene3MurkmindScript | None = None) -> BattleResult:
-        intro = script.opening_lines() if script else []
-        self.output.intro(battle, intro)
+        self._script = script
+        try:
+            intro = script.opening_lines() if script else []
+            self.output.intro(battle, intro)
 
-        while True:
-            self.output.lines(script.on_turn_start(battle) if script else [])
-            self.output.status(battle)
+            while True:
+                if script:
+                    lines, forced = script.on_turn_start(battle)
+                    self.output.lines(lines)
+                    if (
+                        script.pressure_spike_triggered
+                        and not script._pressure_hook_fired
+                    ):
+                        script._pressure_hook_fired = True
+                        if script.on_pressure_spike is not None:
+                            script.on_pressure_spike(battle)
+                    if forced == "captured":
+                        return self._run_forced_capture(battle, script)
+                self.output.status(battle)
 
-            player_action = self._choose_player_action(battle)
-            enemy_action = self._choose_enemy_action(battle)
-            turn_actions = self._ordered_actions(battle, player_action, enemy_action)
+                player_action = self._choose_player_action(battle)
+                enemy_action = self._choose_enemy_action(battle)
+                turn_actions = self._ordered_actions(battle, player_action, enemy_action)
 
-            for actor, target, action in turn_actions:
-                if not actor.is_active() or not target.is_active():
-                    continue
-                if action.kind == "fight" and action.move:
-                    self._resolve_move(actor, target, action.move)
-                    if target.will_broken and script and target.owner == "enemy":
-                        self.output.lines(script.on_enemy_will_break())
-                elif action.kind == "capture":
-                    result = self._attempt_capture(battle, target, script)
+                for actor, target, action in turn_actions:
+                    if not actor.is_active() or not target.is_active():
+                        continue
+                    if action.kind == "fight" and action.move:
+                        self._resolve_move(actor, target, action.move)
+                    elif action.kind == "capture":
+                        result = self._attempt_capture(battle, target)
+                        if result:
+                            return result
+                    elif action.kind == "flee":
+                        self.output.lines(["You break contact and run the trail."])
+                        return self._result("fled", battle)
+                    elif action.kind == "switch":
+                        self._resolve_switch(battle)
+
+                    result = self._check_battle_end(battle)
                     if result:
                         return result
-                elif action.kind == "flee":
-                    self.output.lines(["You break contact and run the trail."])
-                    return self._result("fled", battle)
-                elif action.kind == "switch":
-                    self._resolve_switch(battle)
 
+                self._end_of_turn(battle)
                 result = self._check_battle_end(battle)
                 if result:
                     return result
 
-            self._end_of_turn(battle)
-            result = self._check_battle_end(battle)
-            if result:
-                return result
+                battle.turn_number += 1
+        finally:
+            self._script = None
 
-            battle.turn_number += 1
+    def _run_forced_capture(
+        self, battle: BattleState, script: Scene3MurkmindScript
+    ) -> BattleResult:
+        self.output.lines(script.capture_narration())
+        enemy = battle.enemy_active
+        enemy.current_hp = 0
+        enemy.will_broken = True
+        return self._result("captured", battle, captured_species=enemy.species_id)
 
     def _choose_player_action(self, battle: BattleState) -> Action:
         actions = ["Fight"]
@@ -174,6 +213,8 @@ class BattleEngine:
             self.output.lines([f"{actor.name}: {line}"])
 
         damage = self._calculate_damage(actor, target, move)
+        if self._script is not None and target.owner == "player":
+            damage = self._script.protect_player(target, damage)
         target.current_hp = max(0, target.current_hp - damage)
         self.output.lines([f"{target.name} takes {damage} damage."])
         self._check_will_break(target)
@@ -229,12 +270,7 @@ class BattleEngine:
                 self.output.lines([f"Burn scorches {c.name} for {burn} damage."])
                 self._check_will_break(c)
 
-    def _attempt_capture(
-        self,
-        battle: BattleState,
-        target: Combatant,
-        script: Scene3MurkmindScript | None,
-    ) -> BattleResult | None:
+    def _attempt_capture(self, battle: BattleState, target: Combatant) -> BattleResult | None:
         if battle.battle_kind != "wild":
             self.output.lines(["You can only capture in wild encounters."])
             return None
@@ -242,17 +278,11 @@ class BattleEngine:
             self.output.lines(["No Cubes left."])
             return None
         if not target.will_broken:
-            self.output.lines(["Murkmind is still resisting. Capture isn't stable yet."])
+            self.output.lines([f"{target.name} is still resisting. Capture isn't stable yet."])
             return None
 
         battle.player_cubes -= 1
         cube_mod = CUBE_MODIFIERS["Standard Cube"]
-
-        if script and script.should_force_capture():
-            script.consume_force_capture()
-            self.output.lines(["The Cube seals with a hard flash. Captured."])
-            return self._result("captured", battle, captured_species=target.species_id)
-
         chance = min(0.95, 0.6 * cube_mod + (0.25 if target.will_broken else 0.0))
         if self.rng.random() <= chance:
             self.output.lines(["Capture successful."])
