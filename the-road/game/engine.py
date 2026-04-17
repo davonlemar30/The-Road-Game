@@ -326,6 +326,16 @@ class GameEngine:
             self._cmd_enter("")
             return
 
+        if (
+            self.state.current_location == "mystic_trail_fog_boundary"
+            and target.strip().lower() in {
+                "farther", "further", "enter fog", "fog", "forbidden trail", "go forbidden trail",
+                "beyond", "go beyond", "deeper", "go deeper",
+            }
+        ):
+            self._handle_fog_boundary_attempt()
+            return
+
         success, result = self.town.move_to(self.state.current_location, target)
         if not success:
             self.renderer.show_system(result)
@@ -361,6 +371,11 @@ class GameEngine:
             return
 
         loc = self.state.current_location
+        if loc == "mystic_trail_fog_boundary" and arg.strip().lower() in {
+            "", "fog", "the fog", "forbidden trail", "beyond", "deeper",
+        }:
+            self._handle_fog_boundary_attempt()
+            return
 
         if loc == "keepers_dome":
             if not self.state.flags["dome_entered"]:
@@ -913,19 +928,88 @@ class GameEngine:
             return
 
         if (
-            node_id == "mystic_trail"
+            node_id == "mystic_trail_overlook"
             and self.state.flags["codex_given"]
-            and not self.state.flags["codex_delivered"]
+            and not self.state.flags["scene3_completed"]
         ):
-            self.state.flags["codex_delivered"] = True
-            if "Nate's Codex Parcel" in self.state.inventory:
-                self.state.inventory.remove("Nate's Codex Parcel")
-            self.renderer.show_lines([
-                "\nNate is exactly where he always is — perched at the overlook.",
-                'You hand over the parcel. He exhales. "So he finally sent it."',
-                'He nods back toward town. "Go see Bob. It\'s overdue."',
-            ])
-            self._set_objective("return_to_dome")
+            self._scene3_overlook_hook()
+
+    def _scene3_overlook_hook(self) -> None:
+        if "Nate's Codex Parcel" in self.state.inventory:
+            self.state.inventory.remove("Nate's Codex Parcel")
+        self.state.flags["codex_delivered"] = True
+        self.state.flags["scene3_started"] = True
+        self.state.flags["met_nate_at_overlook"] = True
+        self.state.flags["scene3_completed"] = True
+        self.renderer.show_lines([
+            "Nate is exactly where you thought he'd be.",
+            "",
+            "Perched at the overlook like time doesn't apply to him. The view hasn't changed — the fog over the lower trail, the lake glinting below, the distant forbidden stretch of undergrowth nobody officially admits is dangerous.",
+            "",
+            "He turns when he hears you.",
+            "",
+            "\"Didn't think you'd actually come.\"",
+            "",
+            "You hand over the parcel without ceremony. He takes it, feels the weight, and his expression shifts.",
+            "",
+            "\"...He sent my Codex.\"",
+            "",
+            "He doesn't open it. Just holds it for a second, like a question he wasn't ready for.",
+            "",
+            "Then he pivots.",
+            "",
+            "\"You were at the Dome when Audri came through, weren't you.\"",
+            "",
+            "It's not really a question.",
+            "",
+            "He looks back toward the lake.",
+            "",
+            "\"She used to come up here barefoot. Before the first Crest. Just sit by the water like she was listening to something the rest of us couldn't hear.\"",
+            "",
+            "A pause.",
+            "",
+            "\"Getting that first Astari changed her. Pulled her toward the League, away from all of this. Away from the people who knew her before she became someone.\"",
+            "",
+            "Then he shifts, fully Nate again.",
+            "",
+            "\"She'll be at Jenn's place tonight. The kickback.\"",
+            "",
+            "He watches you.",
+            "",
+            "\"You could show up. But showing up empty-handed? That's just showing up as yourself, and right now yourself is... what exactly?\"",
+            "",
+            "He grins, but not enough to soften it.",
+            "",
+            "\"Dreamleaf. She still likes it. Grows in the Forbidden Trail — real Dreamleaf, not the dried stuff from the market. You want to say something without saying something, that's how you do it.\"",
+            "",
+            "Then he puts the smile away.",
+            "",
+            "\"But you can't go into the Forbidden Trail without an Astari. That's not me being dramatic, that's just the truth. You go past the fog without a partner, you don't come back the same. Or you just don't come back.\"",
+            "",
+            "He stands.",
+            "",
+            "\"Stop by the Dome, man. It's been long overdue.\"",
+            "",
+            "He walks down the trail without looking back.",
+        ])
+        self.town.get_node("mystic_trail_overlook")["visible_npcs"] = []
+        self._set_objective("return_to_dome")
+
+    def _handle_fog_boundary_attempt(self) -> None:
+        self.state.flags["saw_fog_boundary"] = True
+        if not self.state.flags["starter_attuned"]:
+            self.renderer.show_system(
+                "The fog curls at the boundary like it's waiting for something. You're not ready."
+            )
+            return
+        if not self.state.flags["first_rival_battle_done"]:
+            self.renderer.show_system(
+                "You have a partner now, but not a reason yet. Not the kind this place respects."
+            )
+            return
+        self.renderer.show_system(
+            "The boundary gives slightly this time. The trail beyond is there. Not yet walkable in this build."
+        )
 
     # ── House → Town transition ───────────────────────────────────────────────
 
