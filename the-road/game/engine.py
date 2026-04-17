@@ -10,6 +10,9 @@ from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import SAVE_FILE, load_game, save_game
+from game.combat.data import build_murkmind, build_player_starter
+from game.combat.engine import BattleEngine, Scene3MurkmindScript
+from game.combat.models import BattleState
 from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
@@ -940,15 +943,30 @@ class GameEngine:
         self.state.flags["codex_delivered"] = True
         self.state.flags["scene3_started"] = True
         self.state.flags["met_nate_at_overlook"] = True
+        if "Standard Cube" not in self.state.inventory:
+            self.state.inventory.append("Standard Cube")
+
+        result = self._run_scene3_murkmind_encounter()
+        if result.result_type != "captured":
+            self.renderer.show_lines(
+                [
+                    "",
+                    "Murkmind peels back into the fog.",
+                    "The overlook goes quiet, but unfinished.",
+                    "You can regroup and try again.",
+                ]
+            )
+            return
+
         self.state.flags["scene3_completed"] = True
         self.renderer.show_lines([
-            "Nate is exactly where you thought he'd be.",
+            "The Cube settles in your hand, still warm from the seal.",
             "",
-            "Perched at the overlook like time doesn't apply to him. The view hasn't changed — the fog over the lower trail, the lake glinting below, the distant forbidden stretch of undergrowth nobody officially admits is dangerous.",
+            "Nate drags himself upright, breathing hard but steady now.",
             "",
-            "He turns when he hears you.",
+            "\"You actually pulled it off,\" he says, still staring at the Cube.",
             "",
-            "\"Didn't think you'd actually come.\"",
+            "The overlook is the same as ever — fog below, lake light above — but the pressure is gone.",
             "",
             "You hand over the parcel without ceremony. He takes it, feels the weight, and his expression shifts.",
             "",
@@ -994,6 +1012,28 @@ class GameEngine:
         ])
         self.town.get_node("mystic_trail_overlook")["visible_npcs"] = []
         self._set_objective("return_to_dome")
+
+    def _run_scene3_murkmind_encounter(self):
+        player = build_player_starter()
+        enemy = build_murkmind()
+        cubes = self.state.inventory.count("Standard Cube")
+
+        battle = BattleState(
+            player_active=player,
+            enemy_active=enemy,
+            battle_kind="wild",
+            player_cubes=cubes,
+            notes={"scene3_murkmind": True},
+        )
+        script = Scene3MurkmindScript()
+        engine = BattleEngine(self.renderer)
+        result = engine.run(battle, script=script)
+
+        used_cubes = cubes - battle.player_cubes
+        for _ in range(max(0, used_cubes)):
+            if "Standard Cube" in self.state.inventory:
+                self.state.inventory.remove("Standard Cube")
+        return result
 
     def _handle_fog_boundary_attempt(self) -> None:
         self.state.flags["saw_fog_boundary"] = True
