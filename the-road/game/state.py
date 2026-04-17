@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, Optional
 
 
 @dataclass
@@ -24,6 +25,8 @@ class GameState:
     relationships: dict[str, int] = field(default_factory=lambda: {"mom": 0, "bob": 0, "nate": 0})
     choice_history: set[str] = field(default_factory=set)
     companions: list[str] = field(default_factory=list)
+    owned_astari: list[dict[str, Any]] = field(default_factory=list)
+    active_astari_instance_id: Optional[str] = None
     flags: dict[str, bool] = field(
         default_factory=lambda: {
             "met_mother": False,

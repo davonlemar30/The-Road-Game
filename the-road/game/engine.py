@@ -10,6 +10,11 @@ from game.map_renderer import render_map
 from game.objectives import ObjectiveTracker
 from game.parser import parse_command
 from game.persistence import SAVE_FILE, load_game, save_game
+from game.astari import (
+    MURKMIND_SCENE3_INSTANCE_ID,
+    build_owned_murkmind,
+    find_owned,
+)
 from game.choices import run_scene_choice
 from game.combat.data import build_murkmind, build_player_starter
 from game.combat.engine import BattleEngine, Scene3MurkmindScript
@@ -1009,6 +1014,10 @@ class GameEngine:
         self.state.flags["scene3_completed"] = True
         if "Murkmind" not in self.state.companions:
             self.state.companions.append("Murkmind")
+        if find_owned(self.state, MURKMIND_SCENE3_INSTANCE_ID) is None:
+            self.state.owned_astari.append(build_owned_murkmind())
+        if self.state.active_astari_instance_id is None:
+            self.state.active_astari_instance_id = MURKMIND_SCENE3_INSTANCE_ID
         self.town.get_node("mystic_trail_overlook")["visible_npcs"] = []
         self._set_objective("nate_home_from_ambush")
 

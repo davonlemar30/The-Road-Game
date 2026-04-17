@@ -51,6 +51,32 @@ MOVE_DEFS: dict[str, Move] = {
         effect_chance=0.2,
         text_lines=["A quick ember tags exposed seams."],
     ),
+    "undertow_hush": Move(
+        move_id="undertow_hush",
+        name="Undertow Hush",
+        type="Water",
+        power=10,
+        accuracy=95,
+        effect="Drenched",
+        effect_chance=0.25,
+        text_lines=[
+            "Murkmind draws the space around the target into a drowning stillness.",
+            "The pressure folds inward without warning.",
+        ],
+    ),
+    "murkveil": Move(
+        move_id="murkveil",
+        name="Murkveil",
+        type="Water",
+        power=8,
+        accuracy=100,
+        effect=None,
+        effect_chance=None,
+        text_lines=[
+            "Murkmind casts a low veil of pressure between itself and the target.",
+            "The blow lands with damp, quiet weight.",
+        ],
+    ),
 }
 
 
