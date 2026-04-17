@@ -192,7 +192,7 @@ TOWN_NODES: dict[str, dict] = {
             "A ring of attunement marks circles the stone threshold, worn to a shine "
             "from years of people standing in that same spot."
         ),
-        "neighbors": ["the_archive", "fence_line", "mystic_trail"],
+        "neighbors": ["the_archive", "fence_line", "mystic_trail_trailhead"],
         "interactables": {
             "threshold": (
                 "The ring of symbols pressed into the stone. "
@@ -240,36 +240,136 @@ TOWN_NODES: dict[str, dict] = {
         "points_of_interest": ["Gate log", "Patrol path"],
     },
 
-    # ── MYSTIC TRAIL ENTRANCE ─────────────────────────────────────────────────
-    # Where the trail begins. Connects Iso Town to the wider world.
-    "mystic_trail": {
-        "name": "Mystic Trail",
+    # ── MYSTIC TRAIL ──────────────────────────────────────────────────────────
+    "mystic_trail_trailhead": {
+        "name": "Mystic Trail Trailhead",
         "aliases": {
-            "mystic trail", "mystic", "trail", "trail entrance", "trailhead", "the trail",
+            "mystic trail trailhead", "trailhead", "mystic trail", "mystic", "trail", "the trail",
         },
         "description": (
-            "The trail mouth opens up behind the Dome, half-sheltered by overgrowth. "
-            "The path is clear for the first stretch — you can see maybe fifty yards before "
-            "it bends and the canopy closes. The Forbidden Trail branches somewhere deeper in. "
-            "The air is different here. Not wrong. Just — aware. "
-            "You can feel the difference between here and there before you've gone anywhere."
+            "The town gives out by degrees here. Low fencing, a weathered trail sign, and a gate "
+            "that looks more ceremonial than secure mark the start of Mystic Trail. The air cools "
+            "the moment you step under the first reach of canopy. It still feels public. Still close "
+            "enough to home. But not fully."
         ),
-        "neighbors": ["keepers_dome"],
+        "neighbors": ["keepers_dome", "mystic_trail_outer"],
         "interactables": {
-            "path": (
-                "Worn and readable for now. Nate's been on this trail — "
-                "you can see signs if you know what to look for. Recent passage."
-            ),
-            "overgrowth": (
-                "Dense at the edges. The kind that takes years to get this thick. "
-                "Something about it feels intentional."
-            ),
-            "trail marker": (
-                "An old post with symbols burned into it. "
-                "Mystic Trail on one face. The other face has been deliberately scratched out."
-            ),
+            "sign": "A weathered municipal sign bearing Iso Town's crest and the name Mystic Trail. The paint is faded, but someone still clears the moss off it now and then.",
+            "gate": "Simple wood and iron. More for guiding foot traffic than stopping anyone.",
+            "fence": "Low practical fencing that says this used to be maintained with more confidence than it is now.",
+            "canopy": "The branches swallow town light faster than they should.",
         },
-        "visible_npcs": ["Nate (sometimes)"],
-        "points_of_interest": ["Old overlook path", "Trail marker", "Fog boundary"],
+        "visible_npcs": [],
+        "points_of_interest": ["Trail sign", "Gate", "Canopy edge"],
+    },
+    "mystic_trail_outer": {
+        "name": "Mystic Trail - Outer Stretch",
+        "aliases": {"outer trail", "outer", "outer stretch", "mystic outer"},
+        "description": (
+            "The first stretch of Mystic Trail is clear, packed flat by years of regular use. Benches "
+            "sit at uneven intervals, and the path is wide enough that two people could walk side by "
+            "side without brushing the ferns. Dust-like motes drift in the angled light and hang a "
+            "little longer than they should."
+        ),
+        "neighbors": ["mystic_trail_trailhead", "mystic_trail_split"],
+        "interactables": {
+            "bench": "Worn smooth by locals taking a breather on the safer stretch of the trail.",
+            "motes": "Dust or pollen, maybe. They drift almost in sync when the air goes still.",
+            "path": "Readable, public, familiar. The kind of trail people trust because they've trusted it too long.",
+            "trees": "Normal at first glance. A little too quiet if you keep looking.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Trail benches", "Angled canopy light"],
+    },
+    "mystic_trail_split": {
+        "name": "Mystic Trail Split",
+        "aliases": {"trail split", "split", "fork", "marker"},
+        "description": (
+            "A warped wooden marker stands where the trail divides. One branch climbs toward the "
+            "overlook above the lake. The other dips lower into damp ground and denser brush. Both "
+            "paths are walkable. Neither feels entirely neutral."
+        ),
+        "neighbors": ["mystic_trail_outer", "mystic_trail_overlook", "mystic_trail_creek_bend"],
+        "interactables": {
+            "marker": "Old wood split near the base, with hand-cut directional symbols darkened by weather.",
+            "left path": "The lower branch bends toward creek country and thicker brush.",
+            "right path": "The rise toward the overlook is clearer, more used, and easier to read.",
+            "ground": "Two sets of wear patterns. The overlook path gets more foot traffic.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Warped marker", "Overlook branch", "Creek branch"],
+    },
+    "mystic_trail_overlook": {
+        "name": "Mystic Trail Overlook",
+        "aliases": {"overlook", "lake overlook", "ridge", "ledge"},
+        "description": (
+            "The trees open onto a rocky ledge overlooking the lake and the lower tree line beyond it. "
+            "Fog lies in pale bands over the water and the distant brush. This is the kind of place "
+            "people come to think too long in. The town feels far away from here, even though it isn't."
+        ),
+        "neighbors": ["mystic_trail_split", "mystic_trail_deep"],
+        "interactables": {
+            "lake": "Still enough to feel like it's listening.",
+            "ledge": "A natural pause point. People have stood here long enough to smooth the stone.",
+            "stones": "Good for skipping. Nate's probably thrown half this ledge into the lake over the years.",
+            "fog": "It settles over the water in bands, almost like the lake is holding onto old breath.",
+            "treeline": "Past the lake and lower growth, the darker stretch of woods suggests where the safer trail ends.",
+        },
+        "visible_npcs": ["Nate"],
+        "points_of_interest": ["Rocky ledge", "Lake view", "Lower treeline"],
+    },
+    "mystic_trail_creek_bend": {
+        "name": "Mystic Trail Creek Bend",
+        "aliases": {"creek bend", "creek", "lower branch", "bend"},
+        "description": (
+            "The lower branch bends along a narrow creek cutting through roots and dark stone. The air "
+            "is colder here. Water moves quietly over rock, and the brush crowds closer to the path. "
+            "Even the sounds feel dampened."
+        ),
+        "neighbors": ["mystic_trail_split", "mystic_trail_deep"],
+        "interactables": {
+            "creek": "The water runs shallow over stone, but the reflections lag strangely when you stare too long.",
+            "stones": "Dark, slick, and cold enough to numb your fingers fast.",
+            "tracks": "Small prints near the creek bed. Some are ordinary. Some stop where they shouldn't.",
+            "branch": "A strip of old cloth is caught here, weathered almost gray.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Narrow creek", "Dark stone", "Deep trail path"],
+    },
+    "mystic_trail_deep": {
+        "name": "Mystic Trail Deep Stretch",
+        "aliases": {"deep trail", "deep", "deeper", "deep stretch"},
+        "description": (
+            "Past the familiar stretch, Mystic Trail narrows into something less maintained. Markers "
+            "appear farther apart. Brush leans inward. The fog doesn't sit naturally here — it gathers "
+            "with a kind of intention, as if the trail is deciding how much farther it wants to let you go."
+        ),
+        "neighbors": ["mystic_trail_overlook", "mystic_trail_creek_bend", "mystic_trail_fog_boundary"],
+        "interactables": {
+            "marker": "Older than the others, half-tilted, and carved with symbols that look more like warnings than directions.",
+            "brush": "Close enough now that the trail feels borrowed rather than open.",
+            "fog": "It gathers in lanes and pockets that feel directional instead of natural.",
+            "silence": "No birds. No insects. Just the sense that sound is being thinned before it reaches you.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Half-tilted marker", "Fog lanes", "Boundary approach"],
+    },
+    "mystic_trail_fog_boundary": {
+        "name": "Mystic Trail Fog Boundary",
+        "aliases": {"fog boundary", "fog", "boundary", "forbidden trail", "beyond"},
+        "description": (
+            "The path ends at a wall of pale, low-hanging fog gathered thick between old posts and "
+            "half-rotted warning remnants. The trail continues beyond it, but only in broken glimpses. "
+            "Cold clings to the air here. The boundary doesn't look sealed. It looks patient."
+        ),
+        "neighbors": ["mystic_trail_deep"],
+        "interactables": {
+            "posts": "Old boundary posts, half-swallowed by moss and time.",
+            "warning sign": "Most of the lettering has rotted away. Enough remains to suggest this was once treated like a real boundary.",
+            "fog": "It curls and shifts like it's reacting to your attention.",
+            "trail beyond": "You can only catch fragments of it through the mist. Just enough to know it keeps going.",
+        },
+        "visible_npcs": [],
+        "points_of_interest": ["Boundary posts", "Rotting warning sign", "Fog wall"],
     },
 }
