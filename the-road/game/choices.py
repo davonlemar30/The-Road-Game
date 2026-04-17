@@ -10,7 +10,6 @@ from game.ui.view_models import SceneView
 def apply_choice_effects(state, effects: dict) -> None:
     """Apply hidden narrative effects to runtime state."""
     state.reputation += effects.get("reputation", 0)
-    state.disposition += effects.get("disposition", 0)
 
     for rel_key, delta in effects.get("relationships", {}).items():
         state.relationships[rel_key] = state.relationships.get(rel_key, 0) + delta

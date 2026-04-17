@@ -24,26 +24,21 @@ class GameState:
     questions_asked: list[str] = field(default_factory=list)
     discovered_locations: list[str] = field(default_factory=list)
     reputation: int = 0
-    disposition: int = 0
     relationships: dict[str, int] = field(default_factory=lambda: {"mom": 0, "bob": 0, "nate": 0})
     choice_history: set[str] = field(default_factory=set)
-    companions: list[str] = field(default_factory=list)
     owned_astari: list[dict[str, Any]] = field(default_factory=list)
     active_astari_instance_id: Optional[str] = None
     flags: dict[str, bool] = field(
         default_factory=lambda: {
             "met_mother": False,
             "mom_talked": False,         # Scene 1 — Mom's monologue delivered
-            "permission_granted": False, # Scene 1 — gates house exit
             "in_town": False,            # True after player leaves GP's House
             "dome_entered": False,       # Scene 2 — first arrival at Keeper's Dome
             "codex_given": False,        # Scene 2 — Bob gives GP Nate's parcel
             "codex_delivered": False,    # Scene 3 — Nate's Codex handed off
-            "scene3_started": False,
             "scene3_completed": False,
             "scene4_started": False,
             "scene4_completed": False,
-            "met_nate_at_overlook": False,
             "nate_needs_rest": False,
             "camp_setup_needed": False,
             "water_secured": False,

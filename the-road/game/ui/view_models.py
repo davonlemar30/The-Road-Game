@@ -13,7 +13,6 @@ class HudData:
     money: int = 0
     objective: str = ""
     reputation: int = 0
-    disposition: int = 0
 
 
 @dataclass

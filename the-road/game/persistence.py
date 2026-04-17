@@ -30,11 +30,9 @@ def save_game(state: GameState) -> str:
         "questions_asked": state.questions_asked,
         "discovered_locations": state.discovered_locations,
         "reputation": state.reputation,
-        "disposition": state.disposition,
         "relationships": state.relationships,
         "choice_history": sorted(state.choice_history),
         "flags": state.flags,
-        "companions": state.companions,
         "owned_astari": state.owned_astari,
         "active_astari_instance_id": state.active_astari_instance_id,
     }
@@ -68,14 +66,12 @@ def load_game() -> tuple[bool, Union[GameState, str]]:
         state.questions_asked = data.get("questions_asked", [])
         state.discovered_locations = data.get("discovered_locations", [])
         state.reputation = data.get("reputation", 0)
-        state.disposition = data.get("disposition", 0)
         saved_relationships = data.get("relationships", {})
         state.relationships.update(saved_relationships)
         state.choice_history = set(data.get("choice_history", []))
         # Merge saved flags into defaults so new flags don't break old saves
         saved_flags = data.get("flags", {})
         state.flags.update(saved_flags)
-        state.companions = data.get("companions", [])
         state.owned_astari = data.get("owned_astari", [])
         state.active_astari_instance_id = data.get("active_astari_instance_id")
         return True, state

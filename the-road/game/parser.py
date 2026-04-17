@@ -54,8 +54,6 @@ def parse_command(raw: str) -> tuple:
         verb = "status"
     elif verb in {"shop", "trade"}:
         verb = "browse"
-    elif verb in {"combat", "encounter"}:
-        verb = "threat"
 
     elif verb == "l":
         verb = "look"
