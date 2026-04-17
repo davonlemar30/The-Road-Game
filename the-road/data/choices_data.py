@@ -363,4 +363,100 @@ SCENE_CHOICES = {
             },
         ],
     },
+
+    # ── Scene 4: Nate recovery at camp ──────────────────────────────────────
+    "audri_interest_response": {
+        "prompt_lines": [
+            "Nate studies your face through the fire-shadow.",
+            "\"I know that look,\" he says, voice rough. \"What's her name?\"",
+        ],
+        "options": [
+            {
+                "id": "deflect",
+                "text": "Don't do this right now, Nate.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 0},
+                    "disposition": -1,
+                    "history": ["scene4_audri_deflect"],
+                },
+                "response_lines": [
+                    "Nate snorts softly. \"Yeah, fair.\"",
+                ],
+            },
+            {
+                "id": "stay_quiet",
+                "text": "[Stay quiet.]",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 0},
+                    "disposition": 0,
+                    "history": ["scene4_audri_silence"],
+                },
+                "response_lines": [
+                    "You let the quiet answer. Nate doesn't push.",
+                ],
+            },
+            {
+                "id": "admit_it",
+                "text": "Audri. I don't know what it is yet, but yeah.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {"nate": 1},
+                    "disposition": 0,
+                    "history": ["scene4_audri_admitted"],
+                },
+                "response_lines": [
+                    "\"Knew it,\" Nate says, half-smiling despite the pain.",
+                ],
+            },
+        ],
+    },
+    "dreamleaf_motivation": {
+        "prompt_lines": [
+            "Nate nods toward the darker trail.",
+            "\"Dreamleaf's out there. Why are you really going after it?\"",
+        ],
+        "options": [
+            {
+                "id": "for_audri",
+                "text": "For Audri. I want to show up with something real.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["scene4_dreamleaf_for_audri"],
+                },
+                "response_lines": [
+                    "\"Then don't fake it,\" Nate says. \"Bring back the real thing or don't pretend.\"",
+                ],
+            },
+            {
+                "id": "prove_something",
+                "text": "To prove I can do this.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 1,
+                    "history": ["scene4_dreamleaf_self_worth"],
+                },
+                "response_lines": [
+                    "\"Good,\" Nate says. \"Make it about your feet, not anyone else's eyes.\"",
+                ],
+            },
+            {
+                "id": "murkmind_training",
+                "text": "For Murkmind training. We need field reps, not theory.",
+                "effects": {
+                    "reputation": 0,
+                    "relationships": {},
+                    "disposition": 0,
+                    "history": ["scene4_dreamleaf_murkmind_training"],
+                },
+                "response_lines": [
+                    "Murkmind's casing gives a low, steady pulse beside your boot.",
+                ],
+            },
+        ],
+    },
 }
