@@ -16,7 +16,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["mom_sleep_fine"],
                 },
                 "response_lines": [
@@ -29,7 +28,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"mom": 1},
-                    "disposition": -1,
                     "history": ["mom_sleep_restless"],
                 },
                 "response_lines": [
@@ -43,7 +41,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["mom_sleep_quiet"],
                 },
                 "response_lines": [
@@ -66,7 +63,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 1},
-                    "disposition": 0,
                     "history": ["mom_nate_dependable"],
                 },
                 "response_lines": [
@@ -81,7 +77,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": -1,
                     "relationships": {"mom": -1},
-                    "disposition": 0,
                     "history": ["mom_nate_dismissive"],
                 },
                 "response_lines": [
@@ -97,7 +92,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"mom": 0},
-                    "disposition": -1,
                     "history": ["mom_nate_investigative"],
                 },
                 "response_lines": [
@@ -124,7 +118,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["asked_about_audri"],
                 },
                 "response_lines": [
@@ -141,7 +134,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"bob": 1},
-                    "disposition": 0,
                     "history": ["skipped_audri_question"],
                 },
                 "response_lines": [
@@ -154,7 +146,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["stayed_quiet_dome"],
                 },
                 "response_lines": [
@@ -177,7 +168,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"bob": 1},
-                    "disposition": 0,
                     "history": ["bob_codex_accept_cleanly"],
                 },
                 "response_lines": [
@@ -190,7 +180,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"bob": 0},
-                    "disposition": -1,
                     "history": ["bob_codex_ask_urgency"],
                 },
                 "response_lines": [
@@ -203,7 +192,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"bob": -1},
-                    "disposition": 0,
                     "history": ["bob_codex_why_me"],
                 },
                 "response_lines": [
@@ -230,7 +218,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 1},
-                    "disposition": -1,
                     "history": ["scene3_stay_with_nate"],
                 },
                 "response_lines": [
@@ -243,7 +230,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 0},
-                    "disposition": 1,
                     "history": ["scene3_face_the_threat"],
                 },
                 "response_lines": [
@@ -256,7 +242,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 0},
-                    "disposition": -1,
                     "history": ["scene3_freeze_at_warning"],
                 },
                 "response_lines": [
@@ -279,7 +264,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 1},
-                    "disposition": -1,
                     "history": ["scene3_anchor_on_nate"],
                 },
                 "response_lines": [
@@ -292,7 +276,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 0},
-                    "disposition": 1,
                     "history": ["scene3_lock_into_survival"],
                 },
                 "response_lines": [
@@ -305,7 +288,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 0},
-                    "disposition": 2,
                     "history": ["scene3_push_back_angrily"],
                 },
                 "response_lines": [
@@ -328,7 +310,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 1},
-                    "disposition": -1,
                     "history": ["scene3_check_nate_first"],
                 },
                 "response_lines": [
@@ -341,7 +322,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 0},
-                    "disposition": 0,
                     "history": ["scene3_study_cube_first"],
                 },
                 "response_lines": [
@@ -354,7 +334,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 1,
                     "relationships": {"nate": 1},
-                    "disposition": 0,
                     "history": ["scene3_check_nate_astari_too"],
                 },
                 "response_lines": [
@@ -377,7 +356,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 0},
-                    "disposition": -1,
                     "history": ["scene4_audri_deflect"],
                 },
                 "response_lines": [
@@ -390,7 +368,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 0},
-                    "disposition": 0,
                     "history": ["scene4_audri_silence"],
                 },
                 "response_lines": [
@@ -403,7 +380,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {"nate": 1},
-                    "disposition": 0,
                     "history": ["scene4_audri_admitted"],
                 },
                 "response_lines": [
@@ -424,7 +400,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["scene4_dreamleaf_for_audri"],
                 },
                 "response_lines": [
@@ -437,7 +412,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 1,
                     "history": ["scene4_dreamleaf_self_worth"],
                 },
                 "response_lines": [
@@ -450,7 +424,6 @@ SCENE_CHOICES = {
                 "effects": {
                     "reputation": 0,
                     "relationships": {},
-                    "disposition": 0,
                     "history": ["scene4_dreamleaf_murkmind_training"],
                 },
                 "response_lines": [

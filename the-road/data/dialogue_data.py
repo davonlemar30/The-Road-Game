@@ -1,14 +1,15 @@
 """Dialogue content for Scene One: 'Still Here'."""
 
 # Mom's blessing — plays when player tells mom they're heading out (forbidden trail / plan)
-# Triggers told_mom_plans + permission_granted + phone handoff
+# Triggers told_mom_plans + phone handoff
 MOM_BLESSING = [
     "She goes quiet for a second. Just a second.",
     '"So you\'re really going."',
     "Not a question. She already knew.",
-    '"Alright. But you go see Keeper Bob first."',
-    '"Get yourself an Astari before you do anything else — I mean it."',
-    '"You can\'t go into the Forbidden Trail without one. Not safely."',
+    '"Alright. Then listen to me."',
+    '"You already came back with an Astari. Murkmind chose you in blood and fog."',
+    '"That does not make the Forbidden Trail safe. It makes you less alone."',
+    '"You still go through Keeper Bob before you step deeper. I mean it."',
     "She disappears into the kitchen. Comes back with an old phone in her hand.",
     "Screen scratched. Worn at the corners.",
     '"Take this. It\'s got a map of Iso Town and some of Bob\'s field notes on it."',

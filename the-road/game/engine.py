@@ -16,9 +16,6 @@ from game.astari import (
     find_owned,
 )
 from game.choices import run_scene_choice
-from game.combat.data import build_murkmind, build_player_starter
-from game.combat.engine import BattleEngine, Scene3MurkmindScript
-from game.combat.models import BattleState
 from game.state import GameState
 from game.timekeeper import advance_time, format_time_label
 from game.town import TownWorld
@@ -118,7 +115,6 @@ class GameEngine:
                 money=self.state.money,
                 objective=self.state.current_objective,
                 reputation=self.state.reputation,
-                disposition=self.state.disposition,
             ),
         )
 
@@ -130,7 +126,6 @@ class GameEngine:
                 [
                     f"Name: {self.state.player_name or 'Unknown'}",
                     f"Reputation: {self.state.reputation}",
-                    f"Disposition: {self.state.disposition}",
                 ],
             ),
         ]
@@ -246,7 +241,6 @@ class GameEngine:
             "help":      self._cmd_help,
             "objective": self._cmd_objective,
             "journal":   self._cmd_journal,
-            "threat":    self._cmd_threat,
             "status":    self._cmd_status,
             "quit":      self._cmd_quit,
         }
@@ -517,7 +511,8 @@ class GameEngine:
                     ])],
                 ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
-                self.renderer.show_system("(Astari selection coming in the next build.)")
+                self._set_objective("find_dreamleaf")
+                self.renderer.show_system('Bob nods toward the back room. "We start your attunement at first light."')
             else:
                 DialogueSession(
                     npc_name="Keeper Bob",
@@ -593,6 +588,9 @@ class GameEngine:
             return
 
         elif npc_id == "bob":
+            if self.state.current_location == "keepers_dome":
+                self.renderer.show_system("Use 'enter' to continue the Keeper Bob scene.")
+                return
             lines, hint = self.dialogue.talk_to_bob(self.state)
         else:
             lines, hint = self.dialogue.talk_to_town_npc(npc_id)
@@ -626,7 +624,10 @@ class GameEngine:
                 target = candidates[0]
                 topic = topic_only
                 if target == "mother":
+                    before_told = self.state.flags.get("told_mom_plans", False)
                     lines, hint = self.dialogue.ask_mom(self.state, topic)
+                    if (not before_told) and self.state.flags.get("told_mom_plans", False):
+                        self._set_objective("return_to_dome")
                 elif target == "bob":
                     lines, hint = self.dialogue.ask_bob(self.state, topic)
                 else:
@@ -655,7 +656,10 @@ class GameEngine:
             return
 
         if npc_id == "mother":
+            before_told = self.state.flags.get("told_mom_plans", False)
             lines, hint = self.dialogue.ask_mom(self.state, topic)
+            if (not before_told) and self.state.flags.get("told_mom_plans", False):
+                self._set_objective("return_to_dome")
         elif npc_id == "bob":
             lines, hint = self.dialogue.ask_bob(self.state, topic)
         else:
@@ -828,7 +832,6 @@ class GameEngine:
             "  log                      — show recent exploration log",
             "  objective                — show current objective",
             "  journal                  — open objective + notes journal",
-            "  threat                   — render threat/combat UI shell (preview)",
             "  save / load              — save or restore your progress",
             "  help                     — show this list",
             "  quit                     — exit the game",
@@ -843,41 +846,24 @@ class GameEngine:
         self.renderer.show_system(f"Current time: {format_time_label(self.state)}")
 
     def _cmd_journal(self, _arg: str) -> None:
-        view = SceneView(
-            current_mode="journal",
-            journal=JournalView(
-                main_objective=self.state.current_objective,
-                side_objectives=self.state.side_objectives,
-                notes=self.state.journal_notes,
-            ),
-        )
-        self.renderer.render(view)
-        self.renderer.get_input("\nPress Enter to return... ")
-
-    def _cmd_threat(self, _arg: str) -> None:
-        """Developer-facing preview of the threat/combat presentation shell."""
-        self.renderer.render(
-            SceneView(
-                current_mode="threat",
-                threat_name="Roadside Wisp",
-                portrait_id="threat_wisp",
-                threat_lines=[
-                    "A pale shape drifts just beyond the road marker.",
-                    "It does not advance. It waits, watching.",
-                ],
-                player_status_lines=[
-                    f"Name: {self.state.player_name or 'Unknown'}",
-                    f"Disposition: {self.state.disposition}",
-                    f"Reputation: {self.state.reputation}",
-                    f"Gold: {self.state.money}",
-                ],
-                combat_actions=[
-                    "Observe",
-                    "Steady your breath",
-                    "Back away",
-                ],
+        show_archive = False
+        while True:
+            view = SceneView(
+                current_mode="journal",
+                journal=JournalView(
+                    main_objective=self.state.current_objective,
+                    side_objectives=self.state.side_objectives if show_archive else [],
+                    notes=self.state.journal_notes if show_archive else [],
+                ),
             )
-        )
+            self.renderer.render(view)
+            raw = self.renderer.get_input(
+                "\nEnter=close, 'more' to show/hide past objectives + notes > "
+            ).strip().lower()
+            if raw in {"", "close", "exit"}:
+                break
+            if raw in {"more", "m", "toggle"}:
+                show_archive = not show_archive
 
     def _cmd_quit(self, _arg: str) -> None:
         if self.state.flags["in_town"]:
@@ -915,7 +901,10 @@ class GameEngine:
     def _ask_natural(self, npc_id: str, full_input: str) -> None:
         """Route a free-form input to the appropriate NPC ask handler."""
         if npc_id == "mother":
+            before_told = self.state.flags.get("told_mom_plans", False)
             lines, hint = self.dialogue.ask_mom(self.state, full_input)
+            if (not before_told) and self.state.flags.get("told_mom_plans", False):
+                self._set_objective("return_to_dome")
         elif npc_id == "bob":
             lines, hint = self.dialogue.ask_bob(self.state, full_input)
         else:
@@ -968,8 +957,6 @@ class GameEngine:
     def _scene3_overlook_hook(self) -> None:
         # Scene 3 — Lake Ambush at the Mystic Trail Overlook.
         # State mutations happen only AFTER a successful scripted capture.
-        self.state.flags["scene3_started"] = True
-        self.state.flags["met_nate_at_overlook"] = True
 
         self.renderer.show_lines(
             [
@@ -997,15 +984,17 @@ class GameEngine:
             ]
         )
 
-        result = self._run_scene3_murkmind_encounter()
-        if result.result_type != "captured":
-            self.renderer.show_lines(
-                [
-                    "",
-                    "The moment slips. The overlook is not done with you yet.",
-                ]
-            )
-            return
+        run_scene_choice(self.state, "murkmind_pressure_response", renderer=self.renderer)
+
+        self.renderer.show_lines(
+            [
+                "",
+                "Murkmind crashes into you like a wave with a mind behind it.",
+                "You take the hit, keep your feet, and keep Nate between you and the drop.",
+                "When the pressure surges again, you trigger the Switch and force a seal window.",
+                "The Cube catches. Barely.",
+            ]
+        )
 
         self.renderer.show_lines(
             [
@@ -1037,8 +1026,6 @@ class GameEngine:
         self.state.flags["camp_setup_needed"] = True
         self.state.flags["survival_system_unlocked"] = True
         self.state.flags["camping_unlocked"] = True
-        if "Murkmind" not in self.state.companions:
-            self.state.companions.append("Murkmind")
         if find_owned(self.state, MURKMIND_SCENE3_INSTANCE_ID) is None:
             self.state.owned_astari.append(build_owned_murkmind())
         if self.state.active_astari_instance_id is None:
@@ -1256,27 +1243,6 @@ class GameEngine:
         self.state.flags["nate_recovery_talk_complete"] = True
         self.state.flags["scene4_completed"] = True
         self._set_objective("find_dreamleaf")
-
-    def _run_scene3_murkmind_encounter(self):
-        player = build_player_starter()
-        enemy = build_murkmind()
-
-        battle = BattleState(
-            player_active=player,
-            enemy_active=enemy,
-            battle_kind="scripted",
-            player_cubes=0,
-            notes={"scene3_murkmind": True},
-        )
-
-        def _pressure_spike_choice(_battle: BattleState) -> None:
-            run_scene_choice(
-                self.state, "murkmind_pressure_response", renderer=self.renderer
-            )
-
-        script = Scene3MurkmindScript(on_pressure_spike=_pressure_spike_choice)
-        engine = BattleEngine(self.renderer)
-        return engine.run(battle, script=script)
 
     def _handle_fog_boundary_attempt(self) -> None:
         self.state.flags["saw_fog_boundary"] = True

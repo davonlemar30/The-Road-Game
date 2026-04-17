@@ -183,9 +183,6 @@ class DialogueManager:
                 "Something in her eases when she looks at you.",
                 '"Go on."',
             ], ""
-        if state.disposition <= -1:
-            return ['She gives you a steady look. "Careful is fine. Frozen isn\'t."'], ""
-
         return list(MOTHER_AFTER), ""
 
     def talk_to_bob(self, state) -> tuple:
@@ -336,7 +333,6 @@ class DialogueManager:
 
         if topic in _PLAN_TOPICS and not state.flags["told_mom_plans"]:
             state.flags["told_mom_plans"] = True
-            state.flags["permission_granted"] = True
             state.flags["has_old_phone"] = True
             if "Old phone (Mom's)" not in state.inventory:
                 state.inventory.append("Old phone (Mom's)")

@@ -104,18 +104,18 @@ def build_fixed_frame(view: SceneView) -> Layout:
 
 def _journal_sections(journal: JournalView) -> Group:
     notes = journal.notes or ["No notes discovered yet."]
-    side_objectives = journal.side_objectives or ["No side objectives."]
+    past_objectives = journal.side_objectives or ["No past objectives yet."]
     main_objective = journal.main_objective or "No main objective set."
 
     rows: list[Text] = [
-        Text("Main Objective", style="bold"),
+        Text("Current Objective", style="bold"),
         Text(main_objective),
-        Text(""),
-        Text("Side Objectives", style="bold"),
     ]
-    rows.extend(Text(f"• {item}") for item in side_objectives)
-    rows.extend([Text(""), Text("Notes", style="bold")])
-    rows.extend(Text(f"• {item}") for item in notes)
+    if journal.side_objectives or journal.notes:
+        rows.extend([Text(""), Text("Past Objectives", style="bold")])
+        rows.extend(Text(f"• {item}") for item in past_objectives)
+        rows.extend([Text(""), Text("Notes", style="bold")])
+        rows.extend(Text(f"• {item}") for item in notes)
     return Group(*rows)
 
 
@@ -125,7 +125,7 @@ def build_journal_overlay(view: SceneView) -> Layout:
     body = Panel(
         _journal_sections(journal),
         title="Journal",
-        subtitle="Press Enter to return",
+        subtitle="Enter=close • type 'more' to toggle archive",
         border_style="grey39",
         padding=(1, 2),
     )
