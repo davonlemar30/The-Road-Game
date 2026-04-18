@@ -68,8 +68,8 @@ class GameState:
             "starter_attuned": False,
             "first_rival_battle_done": False,
             "forbidden_trail_unlocked": False,
-            "mom_blessing_available": False,  # Scene 4 gate — Bob sends GP home first
-            "told_mom_plans": False,     # Scene 4 — Bob sends GP home; Mom gives blessing
+            "mom_blessing_available": False,  # Legacy save compatibility (old Mom-branch gate)
+            "told_mom_plans": False,     # Legacy Mom-plan conversation state
             "has_old_phone": False,      # Scene 4 — phone received during Mom's blessing
             "phone_unlocked": False,     # Scene 4+ — phone powered on by player
         }

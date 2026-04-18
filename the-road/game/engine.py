@@ -477,52 +477,30 @@ class GameEngine:
                 self.renderer.show_system("\nType 'go mystic trail' to head out.")
                 return
 
-            # Post-delivery: Keeper Bob sends GP home for Scene 4 conversation
-            if self.state.flags["codex_delivered"] and not self.state.flags["mom_blessing_available"]:
-                self.state.flags["mom_blessing_available"] = True
+            # Post-delivery follow-up
+            if self.state.flags["codex_delivered"]:
                 DialogueSession(
                     npc_name="Keeper Bob",
                     portrait_id="npc_bob",
                     beats=[Beat(lines=[
-                        "Keeper Bob checks your face before he checks your hands.",
-                        '"You found him."',
-                        "Not a question.",
-                        '"Good. Now go talk to your mom. Not tonight — now."',
-                        '"Tell her where you\'re going and mean it."',
-                        '"She already suspects. Don\'t let her sit with that."',
-                        '"Come back after and we finish this."',
-                    ])],
-                ).run(self.state, self.renderer)
-                self.renderer.invalidate_hud()
-                self._set_objective("mom_blessing")
-                return
-
-            # Scene 4+ follow-up
-            if self.state.flags["told_mom_plans"]:
-                DialogueSession(
-                    npc_name="Keeper Bob",
-                    portrait_id="npc_bob",
-                    beats=[Beat(lines=[
-                        "Keeper Bob is at his workbench, back to you.",
-                        "An Astari — small, watchful — sits on a perch near the window.",
-                        "It turns its head before Bob does.",
-                        '"Pick the one that picks you. That\'s always been my advice."',
-                        '"The other one already knows you\'re here."',
+                        "Keeper Bob glances up from his bench when you step in.",
+                        '"Nate\'s still breathing because you held the line out there."',
+                        "He nods once, then gets back to work.",
+                        '"Dreamleaf is your next move. Bring it back clean when you\'re ready."',
                     ])],
                 ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self._set_objective("find_dreamleaf")
-                self.renderer.show_system('Bob nods toward the back room. "We start your attunement at first light."')
-            else:
-                DialogueSession(
-                    npc_name="Keeper Bob",
-                    portrait_id="npc_bob",
-                    beats=[Beat(lines=[
-                        "Keeper Bob looks up when you come in.",
-                        '"When you\'ve had that talk at home, come back. Not before."',
-                    ])],
-                ).run(self.state, self.renderer)
-                self.renderer.invalidate_hud()
+                return
+
+            DialogueSession(
+                npc_name="Keeper Bob",
+                portrait_id="npc_bob",
+                beats=[Beat(lines=[
+                    '"Nate needs that Codex. Get it to the overlook and come back."',
+                ])],
+            ).run(self.state, self.renderer)
+            self.renderer.invalidate_hud()
             return
 
         # Generic response for other locations
@@ -1089,7 +1067,6 @@ class GameEngine:
             self.state.flags["murkmind_helped_find_water"] = True
         self.state.flags["water_secured"] = True
         self.state.thirst = max(0, self.state.thirst - 1)
-        self.state.thirst += 1
         self.state.fatigue += 1
         self.renderer.show_system("You fill what you can and ration enough clean water for the night.")
         self._scene4_check_progress()
@@ -1246,6 +1223,16 @@ class GameEngine:
 
     def _handle_fog_boundary_attempt(self) -> None:
         self.state.flags["saw_fog_boundary"] = True
+        pursuing_dreamleaf = (
+            self.state.flags.get("scene4_completed")
+            or self.state.current_objective == "find_dreamleaf"
+        )
+        if pursuing_dreamleaf:
+            self.renderer.show_system(
+                "The fog wall at the Forbidden Trail shifts, then seals again. "
+                "Dreamleaf is beyond this point, but that segment isn't playable in this build yet."
+            )
+            return
         if not self.state.flags["starter_attuned"]:
             self.renderer.show_system(
                 "The fog curls at the boundary like it's waiting for something. You're not ready."
