@@ -332,6 +332,7 @@ class GameEngine:
                 "Go where? Example: go square  /  go keeper's dome  /  go market"
             )
             return
+        target_key = target.lower()
 
         if (
             self.state.flags.get("scene4_started")
@@ -343,14 +344,24 @@ class GameEngine:
             )
             return
 
+        # Allow returning to GP's House from Front Street for post-Scene-4 Mom path.
+        if self.state.current_location == "front_street" and target_key in {
+            "house", "home", "gp house", "front door", "door", "inside", "in",
+        }:
+            self.state.flags["in_town"] = False
+            self.state.current_location = "front_door"
+            advance_time(self.state, 5)
+            self._cmd_look("")
+            return
+
         # "go inside" / "go in" → treat as enter command at current location
-        if target.lower() in {"inside", "in", "through", "through the door"}:
+        if target_key in {"inside", "in", "through", "through the door"}:
             self._cmd_enter("")
             return
 
         if (
             self.state.current_location == "mystic_trail_fog_boundary"
-            and target.strip().lower() in {
+            and target_key in {
                 "farther", "further", "enter fog", "fog", "forbidden trail", "go forbidden trail",
                 "beyond", "go beyond", "deeper", "go deeper",
             }
@@ -1154,6 +1165,7 @@ class GameEngine:
             self.state.inventory.remove("Nate's Codex Parcel")
             self.state.flags["parcel_delivered_to_nate"] = True
             self.state.flags["codex_delivered"] = True
+            self.state.flags["mom_blessing_available"] = True
             self.renderer.show_lines(
                 [
                     "",
@@ -1225,7 +1237,7 @@ class GameEngine:
         self.state.flags["saw_fog_boundary"] = True
         pursuing_dreamleaf = (
             self.state.flags.get("scene4_completed")
-            or self.state.current_objective == "find_dreamleaf"
+            or self.state.current_objective == self.objectives.objectives["find_dreamleaf"]
         )
         if pursuing_dreamleaf:
             self.renderer.show_system(
