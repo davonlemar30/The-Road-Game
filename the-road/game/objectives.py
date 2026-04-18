@@ -10,5 +10,4 @@ class ObjectiveTracker:
     def set_objective(self, state, key: str, *, added: bool = False) -> str:
         text = self.objectives[key]
         state.current_objective = text
-        label = "OBJECTIVE ADDED" if added else "OBJECTIVE UPDATED"
-        return f"\n{label}: {text}"
+        return f"\n→ {text}"

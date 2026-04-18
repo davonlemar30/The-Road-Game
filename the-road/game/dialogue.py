@@ -15,11 +15,13 @@ from data.town_npcs_data import TOWN_NPC_DIALOGUE
 _TOPIC_FILLERS = ("about ", "regarding ", "on ", "the ")
 
 # Topics that trigger the mom's blessing + phone handoff.
-# Any of these phrases means the player is committing to going out.
+# Only intent/commitment words — not generic world-topic words.
+# "trail" and "astari"/"astrali" intentionally excluded: those should route
+# to MOM_QA lore answers, not the blessing gate.
 _PLAN_TOPICS = {
     "plan", "go", "going", "leave", "leaving", "i'm going", "im going",
-    "i'll go", "ill go", "forbidden", "forbidden trail", "trail",
-    "i'm ready", "im ready", "ready", "let's go", "lets go", "astrali", "astari",
+    "i'll go", "ill go", "forbidden", "forbidden trail",
+    "i'm ready", "im ready", "ready", "let's go", "lets go",
 }
 
 _ASTRALI_ALIASES = {"astari", "astrali"}
@@ -184,62 +186,6 @@ class DialogueManager:
                 '"Go on."',
             ], ""
         return list(MOTHER_AFTER), ""
-
-    def talk_to_bob(self, state) -> tuple:
-        if not state.flags["codex_given"]:
-            return (
-                [
-                    "He's at the workbench when you walk in. Doesn't turn around right away — finishing something, the way he always is.",
-                    '"Give me a second."',
-                    "A moment passes. He sets down what he's holding and turns.",
-                    '"Glad you came. I thought about coming back by your place — then decided to wait and see if you\'d come on your own."',
-                    "A pause. Like he's checking something off.",
-                    '"Nate\'s been reading the Mystic-Forbidden split. Running his own logs, asking questions I didn\'t have clean answers to. Then three days ago he stopped showing."',
-                    '"Last thing he borrowed was this Codex."',
-                    "He picks up a wrapped parcel from the bench — carefully bound, heavier than it looks.",
-                    '"It\'s a field calibration guide. Helps you read the terrain when the Trail gets loud. Nate needs it. He went out without it and that\'s on me."',
-                    '"Take it to him. He\'ll be at the overlook if he\'s anywhere."',
-                    "He holds your eye a beat longer than is comfortable.",
-                    '"And when you get back — we finish your attunement. Not a suggestion."',
-                ],
-                "",
-            )
-        if state.flags["codex_given"] and not state.flags["codex_delivered"]:
-            reminder = '"Nate needs that Codex. Get it to the overlook and come back."'
-            if "bob_codex_accept_cleanly" in state.choice_history:
-                reminder = '"You said you\'d head out. I\'m still expecting that."'
-            elif "bob_codex_ask_urgency" in state.choice_history:
-                reminder = '"Same answer: the Field is loud, Nate has no guide. Get there."'
-            elif "bob_codex_why_me" in state.choice_history:
-                reminder = '"Still wondering why you? Carry it. Answers come on the road."'
-            return (
-                [
-                    '"You still have it."',
-                    "Not accusing. Just noting.",
-                    reminder,
-                ],
-                "",
-            )
-        if state.flags["codex_delivered"] and not state.flags["mom_blessing_available"]:
-            return (
-                [
-                    '"You found him."',
-                    "Not a question. He can tell by the way you walked in.",
-                    '"Good."',
-                    '"Now go talk to your mom. Not tonight — now. Tell her where you\'re going."',
-                    '"She already suspects. Don\'t let her sit with that."',
-                    '"Then come back here and we do this right."',
-                ],
-                "",
-            )
-        return (
-            [
-                '"You talked to your mom?"',
-                "A beat. He reads your face.",
-                '"Then we\'re ready. Let\'s not waste it."',
-            ],
-            "",
-        )
 
     def ask_bob(self, state, topic: str) -> tuple:
         topic = self._normalize_topic(topic)

@@ -68,10 +68,10 @@ class GameState:
             "starter_attuned": False,
             "first_rival_battle_done": False,
             "forbidden_trail_unlocked": False,
-            "mom_blessing_available": False,  # Legacy save compatibility (old Mom-branch gate)
-            "told_mom_plans": False,     # Legacy Mom-plan conversation state
-            "has_old_phone": False,      # Scene 4 — phone received during Mom's blessing
-            "phone_unlocked": False,     # Scene 4+ — phone powered on by player
+            "mom_blessing_available": False,  # Set when Nate's codex is delivered — unlocks Mom's blessing + phone path
+            "told_mom_plans": False,          # Set when GP commits to leaving — triggers Mom's blessing scene
+            "has_old_phone": False,           # Set during Mom's blessing — enables map/field notes
+            "phone_unlocked": False,          # Set on first 'use phone' — enables map command
         }
     )
 

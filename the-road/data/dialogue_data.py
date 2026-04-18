@@ -7,13 +7,13 @@ MOM_BLESSING = [
     '"So you\'re really going."',
     "Not a question. She already knew.",
     '"Alright. Then listen to me."',
-    '"You already came back with an Astari. Murkmind chose you in blood and fog."',
+    '"You came back with one already at your side. Bob will know what that means before you do."',
     '"That does not make the Forbidden Trail safe. It makes you less alone."',
     '"You still go through Keeper Bob before you step deeper. I mean it."',
     "She disappears into the kitchen. Comes back with an old phone in her hand.",
     "Screen scratched. Worn at the corners.",
     '"Take this. It\'s got a map of Iso Town and some of Bob\'s field notes on it."',
-    '"Passphrase on the notes is locked — Bob\'ll give you the code when you pick up your Astari."',
+    '"Passphrase on the notes is locked — Bob\'ll give you the code when you\'re ready."',
     '"Check in when you can."',
     "A beat. She doesn't say anything else.",
     '"Go."',
@@ -44,9 +44,6 @@ MOTHER_SCENE1_PART2 = [
     '"And if you go pokin\' around that trail... just be careful out there, honey."',
     '"That place been feelin\'... off lately."',
 ]
-
-# Kept for reference; no longer used in the active scene flow.
-MOTHER_SCENE1 = MOTHER_SCENE1_PART1 + MOTHER_SCENE1_PART2
 
 # Hint shown after the opening scene — plain, conversational.
 MOTHER_SCENE1_HINT = "She's here if there's more on your mind."

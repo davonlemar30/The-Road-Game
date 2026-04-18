@@ -60,8 +60,7 @@ LOCATIONS = {
             ),
             "computer": (
                 "A mid-tier gaming rig, built piece by piece. The fan hums constantly. "
-                "The monitor is dark but a browser tab is still open from last night. "
-                "Type 'inspect notes' to read what's on the screen."
+                "The monitor is dark but a browser tab is still open from last night."
             ),
             "notes": (
                 "A browser tab left open: a forum thread titled 'Astari bonding — what nobody tells you.' "
@@ -161,8 +160,7 @@ LOCATIONS = {
             "The door is reinforced and heavy, built to hold something back. "
             "Through the gap at the bottom you can feel the street — cooler, sharper, different. "
             "A small porch. A wind chime that barely moves. "
-            "The yard patch beyond has something struggling to grow.\n"
-            "Type 'go out' or 'go outside' when you're ready to leave."
+            "The yard patch beyond has something struggling to grow."
         ),
         "exits": {
             # primary: room-based

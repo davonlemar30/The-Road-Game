@@ -97,6 +97,10 @@ class GameEngine:
             "\nYou wake where you've always been: "
             "waiting for movement to become a decision."
         )
+        self.renderer.show_system(
+            "The room is the same. Morning light through the curtains. "
+            "The house is already awake below you."
+        )
 
     def _build_view(self) -> SceneView:
         """Build a SceneView snapshot from the current runtime state."""
@@ -118,6 +122,36 @@ class GameEngine:
             ),
         )
 
+    def _reputation_label(self) -> str:
+        rep = self.state.reputation
+        if rep <= 0:
+            return "Unknown"
+        if rep <= 2:
+            return "Noticed"
+        if rep <= 4:
+            return "Known"
+        return "Respected"
+
+    def _context_hint(self) -> list[str]:
+        """Return a context-sensitive hint line, or nothing if no useful hint applies."""
+        loc = self.state.current_location
+        flags = self.state.flags
+        if flags.get("scene4_started") and not flags.get("scene4_completed") \
+                and loc == "mystic_trail_safe_hollow":
+            missing = []
+            if not flags.get("water_secured"):
+                missing.append("gather water")
+            if not flags.get("camp_secured"):
+                missing.append("prepare camp")
+            if not missing:
+                return ["rest when ready"]
+            return [" · ".join(missing)]
+        if not flags.get("in_town") and not flags.get("mom_talked"):
+            return ["talk mom"]
+        if flags.get("saw_fog_boundary"):
+            return ["fog boundary reached"]
+        return []
+
     def _build_sidebar_sections(self, location_name: str) -> list[SidebarSection]:
         sections: list[SidebarSection] = [
             SidebarSection("Location", [location_name, self.state.time_label]),
@@ -125,7 +159,7 @@ class GameEngine:
                 "Player",
                 [
                     f"Name: {self.state.player_name or 'Unknown'}",
-                    f"Reputation: {self.state.reputation}",
+                    f"Standing: {self._reputation_label()}",
                 ],
             ),
         ]
@@ -142,12 +176,9 @@ class GameEngine:
             if self.state.current_location == "living_room" and not self.state.flags["mom_talked"]:
                 sections.append(SidebarSection("Nearby", ["Your mom is here"]))
 
-        sections.append(
-            SidebarSection(
-                "Hint",
-                ["Type a number, or type any command.", "Use 'journal' for objectives and notes."],
-            )
-        )
+        hint_lines = self._context_hint()
+        if hint_lines:
+            sections.append(SidebarSection("Hint", hint_lines))
         return sections
 
     def _suggested_actions(self) -> list[str]:
@@ -159,7 +190,7 @@ class GameEngine:
                 and not self.state.flags.get("scene4_completed")
                 and self.state.current_location == "mystic_trail_safe_hollow"
             ):
-                actions.extend(["inspect water", "gather water", "prepare camp", "rest"])
+                actions.extend(["gather water", "prepare camp", "rest"])
                 if not self.state.flags.get("campfire_lit"):
                     actions.append("light fire")
                 return actions[:6]
@@ -206,7 +237,7 @@ class GameEngine:
                 self.state.player_name = name
             else:
                 self.renderer.show_system("Please enter a name.")
-        self.renderer.show_system(f"\nMorning, {self.state.player_name}.")
+        self.renderer.show_system("\nThat's the name you've carried this long. Might as well keep it.")
 
     # ── Command dispatch ─────────────────────────────────────────────────────
 
@@ -307,7 +338,6 @@ class GameEngine:
                         "Something holds you at the threshold. "
                         "You haven't talked to your mom yet — not really."
                     )
-                    self.renderer.show_system("Type 'talk mom' first.")
                     return
                 self._transition_to_town()
                 return
@@ -340,7 +370,7 @@ class GameEngine:
             and self.state.current_location == "mystic_trail_safe_hollow"
         ):
             self.renderer.show_system(
-                "You can't move Nate yet. Secure water, prepare camp, then rest."
+                "Nate isn't stable enough. Get water and shelter first."
             )
             return
 
@@ -477,6 +507,11 @@ class GameEngine:
                                 "He doesn't push you toward it. He just lets that truth sit in the room.",
                                 '"Mystic Trail is usually fine, but lately the path\'s been feeling off."',
                                 '"So be careful."',
+                                "",
+                                "Before you go, he reaches under the bench.",
+                                "Two things, set on the table without ceremony.",
+                                "A small field switch. An empty cube sealed at the hinge.",
+                                '"Insurance," he says. "Not a plan. Don\'t lose the cube."',
                             ],
                             choice_id="bob_codex_response",
                         ),
@@ -485,30 +520,44 @@ class GameEngine:
                 session.run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self._set_objective("deliver_codex", added=True)
-                self.renderer.show_system("\nType 'go mystic trail' to head out.")
                 return
 
             # Post-delivery follow-up
             if self.state.flags["codex_delivered"]:
+                # Ensure mom blessing path is accessible on any fresh save path
+                if not self.state.flags.get("mom_blessing_available"):
+                    self.state.flags["mom_blessing_available"] = True
                 DialogueSession(
                     npc_name="Keeper Bob",
                     portrait_id="npc_bob",
                     beats=[Beat(lines=[
-                        "Keeper Bob glances up from his bench when you step in.",
-                        '"Nate\'s still breathing because you held the line out there."',
-                        "He nods once, then gets back to work.",
-                        '"Dreamleaf is your next move. Bring it back clean when you\'re ready."',
+                        "Keeper Bob checks your face before your hands.",
+                        '"You found him."',
+                        "Not a question.",
+                        "A beat. He sets down what he's working on.",
+                        '"Before you push deeper — talk to your mom."',
+                        '"She should hear it from you, not from the road."',
+                        '"After that, Dreamleaf. Bring it back clean."',
                     ])],
                 ).run(self.state, self.renderer)
                 self.renderer.invalidate_hud()
                 self._set_objective("find_dreamleaf")
                 return
 
+            reminder = '"Nate needs that Codex. Get it to the overlook."'
+            if "bob_codex_accept_cleanly" in self.state.choice_history:
+                reminder = '"You said you\'d head out. I\'m still expecting that."'
+            elif "bob_codex_ask_urgency" in self.state.choice_history:
+                reminder = '"Same answer: the Field is loud, Nate has no guide. Get there."'
+            elif "bob_codex_why_me" in self.state.choice_history:
+                reminder = '"Still wondering why you? Carry it. Answers come on the road."'
             DialogueSession(
                 npc_name="Keeper Bob",
                 portrait_id="npc_bob",
                 beats=[Beat(lines=[
-                    '"Nate needs that Codex. Get it to the overlook and come back."',
+                    '"You still have it."',
+                    "Not accusing. Just noting.",
+                    reminder,
                 ])],
             ).run(self.state, self.renderer)
             self.renderer.invalidate_hud()
@@ -578,9 +627,9 @@ class GameEngine:
 
         elif npc_id == "bob":
             if self.state.current_location == "keepers_dome":
-                self.renderer.show_system("Use 'enter' to continue the Keeper Bob scene.")
+                self.renderer.show_system("He's inside. Step in.")
                 return
-            lines, hint = self.dialogue.talk_to_bob(self.state)
+            lines, hint = [], ""
         else:
             lines, hint = self.dialogue.talk_to_town_npc(npc_id)
 
@@ -615,7 +664,9 @@ class GameEngine:
                 if target == "mother":
                     before_told = self.state.flags.get("told_mom_plans", False)
                     lines, hint = self.dialogue.ask_mom(self.state, topic)
-                    if (not before_told) and self.state.flags.get("told_mom_plans", False):
+                    dreamleaf_obj = self.objectives.objectives.get("find_dreamleaf", "")
+                    if (not before_told) and self.state.flags.get("told_mom_plans", False) \
+                            and self.state.current_objective != dreamleaf_obj:
                         self._set_objective("return_to_dome")
                 elif target == "bob":
                     lines, hint = self.dialogue.ask_bob(self.state, topic)
@@ -647,7 +698,9 @@ class GameEngine:
         if npc_id == "mother":
             before_told = self.state.flags.get("told_mom_plans", False)
             lines, hint = self.dialogue.ask_mom(self.state, topic)
-            if (not before_told) and self.state.flags.get("told_mom_plans", False):
+            dreamleaf_obj = self.objectives.objectives.get("find_dreamleaf", "")
+            if (not before_told) and self.state.flags.get("told_mom_plans", False) \
+                    and self.state.current_objective != dreamleaf_obj:
                 self._set_objective("return_to_dome")
         elif npc_id == "bob":
             lines, hint = self.dialogue.ask_bob(self.state, topic)
@@ -699,14 +752,13 @@ class GameEngine:
     def _cmd_where(self, _arg: str) -> None:
         if not self.state.flags["in_town"]:
             loc = self.world.get_location(self.state.current_location)
-            exits = ", ".join(loc["exits"].keys())
-            self.renderer.show_system(f"\nYou're in the {loc['name']}. Exits: {exits}")
+            paths = ", ".join(loc["exits"].keys())
+            self.renderer.show_system(f"\nYou're at {loc['name']}. Paths: {paths}")
             return
 
         node = self.town.get_node(self.state.current_location)
         nearby = self.town.neighbors_text(self.state.current_location)
-        self.renderer.show_system(f"\nYou're at {node['name']}.")
-        self.renderer.show_system(f"Nearby: {nearby}")
+        self.renderer.show_system(f"\nYou're at {node['name']}. Paths: {nearby}")
 
     def _cmd_map(self, _arg: str) -> None:
         if not self.state.flags["in_town"]:
@@ -847,7 +899,7 @@ class GameEngine:
             )
             self.renderer.render(view)
             raw = self.renderer.get_input(
-                "\nEnter=close, 'more' to show/hide past objectives + notes > "
+                "\nenter to close · 'more' to show past objectives > "
             ).strip().lower()
             if raw in {"", "close", "exit"}:
                 break
@@ -892,7 +944,9 @@ class GameEngine:
         if npc_id == "mother":
             before_told = self.state.flags.get("told_mom_plans", False)
             lines, hint = self.dialogue.ask_mom(self.state, full_input)
-            if (not before_told) and self.state.flags.get("told_mom_plans", False):
+            dreamleaf_obj = self.objectives.objectives.get("find_dreamleaf", "")
+            if (not before_told) and self.state.flags.get("told_mom_plans", False) \
+                    and self.state.current_objective != dreamleaf_obj:
                 self._set_objective("return_to_dome")
         elif npc_id == "bob":
             lines, hint = self.dialogue.ask_bob(self.state, full_input)
@@ -910,7 +964,7 @@ class GameEngine:
     def _on_location_entered(self, location_id: str) -> None:
         if location_id == "living_room" and not self.state.flags["met_mother"]:
             self.state.flags["met_mother"] = True
-            self.renderer.show_system("\nYour mom is here, in her chair. She hears you come down.")
+            self.renderer.show_system("\nYour mom is here. She hears you come down.")
             self._set_objective("talk_to_mom")
 
         elif location_id == "front_door":
@@ -918,12 +972,9 @@ class GameEngine:
                 self.renderer.show_system(
                     "Something pulls you back. You haven't spoken to your mom yet."
                 )
-                self.renderer.show_system(
-                    "Type 'go upstairs' to find her, or 'talk mom' if she's nearby."
-                )
             else:
                 self.renderer.show_system(
-                    "The door is right there. Type 'go out' when you're ready."
+                    "The handle waits under your hand. Leaving is real now."
                 )
 
     def _on_town_node_entered(self, node_id: str) -> None:
@@ -1039,8 +1090,6 @@ class GameEngine:
             ]
         )
         if not self.state.flags.get("survival_system_unlocked_intro_shown", False):
-            self.renderer.show_system("New systems unlocked: Hunger, Thirst, Fatigue")
-            self.renderer.show_system("Stabilize Nate: secure water and prepare camp.")
             self.state.flags["survival_system_unlocked_intro_shown"] = True
 
     def _handle_scene4_action(self, verb: str, arg: str) -> bool:
@@ -1237,26 +1286,17 @@ class GameEngine:
         self.state.flags["saw_fog_boundary"] = True
         pursuing_dreamleaf = (
             self.state.flags.get("scene4_completed")
-            or self.state.current_objective == self.objectives.objectives["find_dreamleaf"]
+            or self.state.flags.get("dreamleaf_hint_received")
         )
         if pursuing_dreamleaf:
             self.renderer.show_system(
-                "The fog wall at the Forbidden Trail shifts, then seals again. "
-                "Dreamleaf is beyond this point, but that segment isn't playable in this build yet."
-            )
-            return
-        if not self.state.flags["starter_attuned"]:
-            self.renderer.show_system(
-                "The fog curls at the boundary like it's waiting for something. You're not ready."
-            )
-            return
-        if not self.state.flags["first_rival_battle_done"]:
-            self.renderer.show_system(
-                "You have a partner now, but not a reason yet. Not the kind this place respects."
+                "The fog wall holds. Dreamleaf is somewhere beyond it, "
+                "but whatever waits past the boundary won't open for you yet."
             )
             return
         self.renderer.show_system(
-            "The boundary gives slightly this time. The trail beyond is there. Not yet walkable in this build."
+            "The fog curls at the boundary like it's waiting for something. "
+            "You have a partner now, but not a reason yet. Not the kind this place respects."
         )
 
     # ── House → Town transition ───────────────────────────────────────────────
@@ -1281,9 +1321,7 @@ class GameEngine:
 
         # find_bob was already set during the Mom conversation —
         # do NOT override it with find_nate here.
-        # Remind the player of their current objective.
-        self.renderer.show_system(f"\nObjective: {self.state.current_objective}")
-        self.renderer.show_system("\nType 'look' to take in Front Street.")
+        self.renderer.show_system(f"\n→ {self.state.current_objective}")
 
     # ── Scene 2 hook ─────────────────────────────────────────────────────────
 
@@ -1296,8 +1334,7 @@ class GameEngine:
                 "The door is half-open. Voices carry through the gap — low, controlled.",
                 "The kind of conversation that doesn't need to be loud to have weight.",
                 "You step closer.",
-                '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve got something that can\'t wait."',
+                '"Come on in." Keeper Bob\'s voice, from inside. "I\'ve been holding something too long."',
             ],
         ))
         self._set_objective("enter_dome", added=True)
-        self.renderer.show_system("\nType 'enter' to step inside.")

@@ -1,4 +1,4 @@
-"""Objective text constants for Scene One."""
+"""Objective text constants for The Road — Scenes 1 through 4."""
 
 OBJECTIVES = {
     "look_around":    "Look around your room.",
@@ -9,9 +9,7 @@ OBJECTIVES = {
     "enter_dome":     "Enter the Keeper's Dome.",
     "deliver_codex":  "Deliver Nate's Codex. Find him at Mystic Trail.",
     "return_to_dome": "Return to the Keeper's Dome.",
-    "mom_blessing":   "Talk to your mom, then return to Keeper Bob.",
-    "nate_home_from_ambush": "Get Nate back to Iso Town. Return to Keeper Bob.",
     "stabilize_nate": "Keep Nate stable. Secure water and a safe place to rest.",
-    "wait_for_nate": "Wait for Nate to recover enough to move.",
-    "find_dreamleaf": "Enter the Forbidden Trail and harvest Dreamleaf.",
+    "wait_for_nate":  "Wait for Nate to recover enough to move.",
+    "find_dreamleaf": "Find a way toward Dreamleaf beyond the fog.",
 }
